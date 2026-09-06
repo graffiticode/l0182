@@ -17,7 +17,7 @@
  * MCP tool sequence does too. Same instrument, same steps, whichever client you arrive on.
  */
 import "../../index.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormProps, CompileError } from "@graffiticode/l0000-view";
 import { answerSurvey, openSurvey } from "../../lib/service";
 import type { Frame } from "../../lib/service";
@@ -42,7 +42,16 @@ export const Form = ({ state }: FormProps) => {
 
   const apply = state.apply;
   const session = activity?.session;
+  const participants = activity?.participants;
   const participation = response.participation;
+
+  // The compiled sequence, as the backend needs it. The proxy never sees the activity, so
+  // without this a backend that does not already know the session cannot bound the cursor or
+  // size the sample. Memoised on the ids so a recompile does not look like a different activity.
+  const refs = useMemo(
+    () => items.map((i) => ({ id: i.id, type: i.type, ...(i.sample !== undefined ? { sample: i.sample } : {}) })),
+    [items.map((i) => `${i.id}:${i.type}:${i.sample ?? ""}`).join("|")],
+  );
 
   // Open (or resume) the participation once the activity has compiled. `opened` guards against
   // StrictMode's double-mount and against a recompile re-running the effect, either of which
@@ -54,7 +63,7 @@ export const Form = ({ state }: FormProps) => {
     let cancelled = false;
     (async () => {
       try {
-        const next = await openSurvey({ session, participation });
+        const next = await openSurvey({ session, participation, participants, items: refs });
         if (cancelled) return;
         setFrame(next);
         apply({ type: "navigate", args: { participation: next.participation, item: next.item } });
@@ -65,7 +74,7 @@ export const Form = ({ state }: FormProps) => {
     return () => {
       cancelled = true;
     };
-  }, [activity, session, participation, apply]);
+  }, [activity, session, participation, participants, refs, apply]);
 
   // Re-seed the working value whenever the participant lands on a different item, from what
   // the server sent and what they answered here before — so going back shows their own answer
@@ -90,7 +99,7 @@ export const Form = ({ state }: FormProps) => {
 
     setBusy(true);
     try {
-      const next = await answerSurvey({ session, participation, item: cursor, answer });
+      const next = await answerSurvey({ session, participation, participants, items: refs, item: cursor, answer });
       setFrame(next);
       // The answer is reported as `response` because that is one of the two action types the
       // shared View recompiles on — so capture needs no transport of its own, and the answer
@@ -111,7 +120,7 @@ export const Form = ({ state }: FormProps) => {
     } finally {
       setBusy(false);
     }
-  }, [item, kind, busy, value, cursor, items.length, session, participation, response, apply]);
+  }, [item, kind, busy, value, cursor, items.length, session, participation, participants, refs, response, apply]);
 
   const back = useCallback(() => {
     apply({ type: "navigate", args: { item: Math.max(cursor - 1, 0) } });
@@ -144,6 +153,11 @@ export const Form = ({ state }: FormProps) => {
 
     return (
       <div className="flex flex-col gap-5">
+        {frame?.mock && (
+          <span className="self-start rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">
+            Sample data
+          </span>
+        )}
         <Stem title={activity.title} prompt={item.prompt} hint={item.hint} />
         <Body item={item} frame={frame} value={value} setValue={setValue} />
         {failure && <ErrorList errors={[{ message: failure }]} />}

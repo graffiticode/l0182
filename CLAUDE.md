@@ -179,6 +179,46 @@ is annotated `destructiveHint: true`. Routing participants through it would be r
 The service credential (`MYSTICWONK_API_KEY`) lives here and never reaches a browser or an
 agent. That is the reason the proxy exists rather than the clients calling the service directly.
 
+### The mock backend, and what it is honest about
+
+With no `MYSTICWONK_API_URL`, `survey.ts` falls through to `mock-service.ts` — one file and one
+branch, so removing it later is a two-line change. It exists because the flow was unusable
+without credentials nobody had yet.
+
+The fallback is for **absence, never misconfiguration**: a URL that is set but unreachable still
+errors. And it is loud in three places — a startup warning, `mock: true` on every frame, and a
+"Sample data" badge in the player — because the failure to design against is a real deploy that
+merely *forgot* the variable and then served invented rankings that look exactly like real ones.
+
+Two things it gets right that are easy to get wrong:
+
+- **Sampling needs BOTH properties.** Least-shown-first spreads exposure, which is what lets a
+  pool grow without every participant seeing all of it. But sorting by exposure with a random
+  tie-break gives only that: the seed counts differ by tens, so a 0..1 jitter never reorders
+  anything and every participant draws the identical set. So it takes a *window* of the
+  least-shown and chooses at random within it. The window rotates as exposure accumulates.
+- **Tallies are per actor class**, so `audience` genuinely filters. Without that, the one feature
+  this language exists to demonstrate would be untested.
+
+Scoring is selections over times-shown. The real engine is MCMC over the micro-rankings; this is
+a tally and no amount of tidying makes it that. State is in-memory, so deploy `--max-instances 1`
+while mocked.
+
+### The clients pass the item sequence, because the proxy cannot see it
+
+The proxy receives a session, a participation, an actor and an answer — never the compiled
+activity. A backend that does not already know the session therefore cannot bound the cursor or
+size the sample. Both clients hold the activity, so both send `items: [{id, type, sample?}]`; a
+real service knows this from the session and ignores it.
+
+The same gap is why a frame carries a **superset** — `ideas`, `selected` and `results` on every
+frame, with each renderer taking its slice. Teaching the mock the item sequence twice over would
+be the alternative.
+
+`participants` is sent for the same reason and matters more: it is the authored gate, and the
+Form originally omitted it, so a survey restricted to one class enforced that against agents and
+admitted humans. Send it on both open and answer.
+
 ### `actor` is derived from the route, never self-asserted
 
 `actorOf` reads `X-Graffiticode-Client` (and `X-Graffiticode-Client-Host`), not the request

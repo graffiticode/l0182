@@ -21,11 +21,25 @@ export interface RankedIdea extends Idea {
   score?: number;
 }
 
+/** One item of the activity, as the backend needs to see it. */
+export interface ItemRef {
+  id: number;
+  type: string;
+  sample?: number;
+}
+
 /** What the server says the participant should be looking at now. */
 export interface Frame {
   participation: string;
   /** The id of the item the participant is on. */
   item: number;
+  /**
+   * True when the backend is the built-in mock rather than a real service.
+   *
+   * Surfaced in the player as a badge. A deployment that merely forgot to configure a service
+   * would otherwise show invented rankings that look exactly like real ones.
+   */
+  mock?: boolean;
   /** For a `select` item: this participant's adaptive sample. */
   ideas?: Idea[];
   /** For a `rank` item: the ideas they selected, in their current order. */
@@ -59,16 +73,27 @@ async function post(path: string, body: unknown): Promise<Frame> {
   return out as Frame;
 }
 
-/** Start or resume a participation. */
+/**
+ * Start or resume a participation.
+ *
+ * `participants` is the authored gate and must be sent, or the server has nothing to enforce
+ * and a survey restricted to one class would admit the other. `items` is the activity's
+ * sequence: the proxy never sees the compiled activity, so a backend that does not already know
+ * the session cannot bound the cursor or size the sample without being told.
+ */
 export const openSurvey = (args: {
   session?: string;
   participation?: string;
+  participants?: string[];
+  items?: ItemRef[];
 }): Promise<Frame> => post("/survey/open", args);
 
 /** Submit the current item's answer and advance. */
 export const answerSurvey = (args: {
   session?: string;
   participation: string;
+  participants?: string[];
+  items?: ItemRef[];
   item: number;
   answer: Answer;
 }): Promise<Frame> => post("/survey/answer", args);

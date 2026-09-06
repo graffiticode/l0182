@@ -91,7 +91,21 @@ npm run dev     # API on :50182
 |----------|---------|---------|
 | `PORT` | `50182` | The language server's port |
 | `AUTH_URL` | `https://auth.graffiticode.org` | Token verification |
-| `MYSTICWONK_API_URL` | — | The collective-intelligence service the proxy forwards to |
+| `MYSTICWONK_API_URL` | — | The collective-intelligence service the proxy forwards to. **Unset → the built-in mock** |
 | `MYSTICWONK_API_KEY` | — | Its credential. Server-side only; never sent to a client |
+
+## Running without a service
+
+With no `MYSTICWONK_API_URL`, `/survey/*` is served by a built-in mock, so the whole flow works
+with no credentials. It seeds an idea pool, spreads sampling across it, tallies selections per
+participant class, and accepts contributions — enough to demonstrate the language end to end.
+
+It is loud about being fake: a startup warning, `mock: true` on every response, and a **Sample
+data** badge in the player. A URL that is set but unreachable still fails — the mock stands in
+for absence, never for misconfiguration.
+
+Its state is in-memory, so **deploy with `--max-instances 1` while mocked**: a cold start empties
+the pool and a second instance has its own. Scoring is a tally of selections over times-shown,
+not the real Markov Chain Monte Carlo aggregation.
 
 See [CLAUDE.md](CLAUDE.md) for the design record.

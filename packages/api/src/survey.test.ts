@@ -42,20 +42,34 @@ describe("assertAccepted", () => {
 });
 
 describe("configuration", () => {
-  it("reports a missing service as 503 about this deployment, not as a transport failure", async () => {
+  it("falls back to the mock when no service is configured", async () => {
     const had = process.env.MYSTICWONK_API_URL;
     delete process.env.MYSTICWONK_API_URL;
     try {
-      await open({ session: "s1", actor: human });
+      const frame = await open({ session: "cfg-1", actor: human, items: [{ id: 0, type: "select", sample: 4 }] });
+      // The fallback is for ABSENCE, and it announces itself: a caller — and a reader of the
+      // logs — must be able to tell fabricated rankings from real ones.
+      expect(frame.mock).toBe(true);
+      expect(frame.ideas?.length).toBe(4);
+    } finally {
+      if (had) process.env.MYSTICWONK_API_URL = had;
+    }
+  });
+
+  it("still fails loudly when a service IS configured but unreachable", async () => {
+    // The mock must catch absence, never misconfiguration. A typo'd URL that silently served
+    // invented data would be the worst outcome of having a mock at all.
+    const had = process.env.MYSTICWONK_API_URL;
+    process.env.MYSTICWONK_API_URL = "http://127.0.0.1:9";
+    try {
+      await open({ session: "cfg-2", actor: human });
       throw new Error("expected a refusal");
     } catch (e: any) {
       expect(e).toBeInstanceOf(SurveyError);
-      expect(e.status).toBe(503);
-      expect(e.message).toContain("MYSTICWONK_API_URL");
-      // The transport catch used to swallow this and relabel it "did not answer".
-      expect(e.message).not.toContain("did not answer");
+      expect(e.message).toContain("did not answer");
     } finally {
       if (had) process.env.MYSTICWONK_API_URL = had;
+      else delete process.env.MYSTICWONK_API_URL;
     }
   });
 });

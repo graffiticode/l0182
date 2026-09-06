@@ -11,7 +11,15 @@
  * ranking is computed — belongs to the collective-intelligence service. L0182 declares the
  * parameters and forwards; it does NOT implement any of it. The service credential lives here
  * and never reaches a browser or an agent.
+ *
+ * With no `MYSTICWONK_API_URL` configured this falls back to `mock-service.ts`, so the flow
+ * works end to end with no credentials. That fallback is loud on purpose — a startup warning, a
+ * `mock: true` on every frame, and a badge in the player — because a deploy that merely FORGOT
+ * the variable would otherwise serve invented rankings that look real. A URL that is set but
+ * unreachable still fails; the mock catches absence, never misconfiguration.
  */
+import * as mock from "./mock-service.js";
+import type { ItemRef } from "./mock-service.js";
 
 export type ActorClass = "human" | "agent";
 
@@ -29,6 +37,8 @@ export interface Idea {
 export interface Frame {
   participation: string;
   item: number;
+  /** Present and true when this came from the built-in mock rather than a real service. */
+  mock?: boolean;
   ideas?: Idea[];
   selected?: Idea[];
   results?: Array<Idea & { score?: number }>;
@@ -49,16 +59,10 @@ export class SurveyError extends Error {
   }
 }
 
-const serviceUrl = (): string => {
-  const url = process.env.MYSTICWONK_API_URL;
-  if (!url) {
-    throw new SurveyError(
-      "This deployment has no collective-intelligence service configured. Set MYSTICWONK_API_URL.",
-      503,
-    );
-  }
-  return url.replace(/\/$/, "");
-};
+/** No service configured means the mock stands in. Read per call so tests can toggle it. */
+export const mocking = (): boolean => !process.env.MYSTICWONK_API_URL;
+
+const serviceUrl = (): string => (process.env.MYSTICWONK_API_URL || "").replace(/\/$/, "");
 
 async function call(path: string, body: unknown): Promise<any> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -117,11 +121,21 @@ export interface OpenArgs {
   participation?: string;
   participants?: string[];
   actor: Actor;
+  /**
+   * The activity's items, in order.
+   *
+   * The proxy never sees the activity — it gets a session, a participation and an answer — so a
+   * backend that does not already know the session has no way to bound the cursor or size the
+   * sample. Both clients hold the compiled activity, so they pass it; the real service knows all
+   * of this from the session and ignores the field.
+   */
+  items?: ItemRef[];
 }
 
 /** Start a participation, or resume the one the token names. */
-export async function open({ session, participation, participants, actor }: OpenArgs): Promise<Frame> {
+export async function open({ session, participation, participants, actor, items }: OpenArgs): Promise<Frame> {
   assertAccepted(actor, participants);
+  if (mocking()) return mock.open({ session, participation, actor, items });
   return (await call("/survey/participations", { session, participation, actor })) as Frame;
 }
 
@@ -146,6 +160,7 @@ export async function answer({
   participants,
   actor,
   item,
+  items,
   answer: given,
 }: AnswerArgs): Promise<Frame> {
   assertAccepted(actor, participants);
@@ -155,6 +170,7 @@ export async function answer({
   if (item !== undefined && (typeof item !== "number" || item < 0)) {
     throw new SurveyError("`item`, when given, must be the id of the item being answered.", 400);
   }
+  if (mocking()) return mock.answer({ session, participation, actor, item, items, answer: given });
   return (await call(`/survey/participations/${encodeURIComponent(participation)}/answers`, {
     session,
     ...(item !== undefined ? { item } : {}),
@@ -172,6 +188,7 @@ export interface ResultsArgs {
 
 /** The group's current ranking, over the population the activity's `audience` names. */
 export async function results({ session, participation, audience, limit }: ResultsArgs): Promise<Frame> {
+  if (mocking()) return mock.results({ session, participation, audience, limit });
   return (await call("/survey/results", {
     session,
     participation,
