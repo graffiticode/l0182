@@ -27,7 +27,16 @@ steps:
         --labels=commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID,gcb-trigger-id=$_TRIGGER_ID
       - '--region=$_DEPLOY_REGION'
       - '--quiet'
-      - '--set-env-vars=AUTH_URL=$_AUTH_URL'
+      # --update-env-vars, NOT --set-env-vars: set replaces the whole environment, so a
+      # MYSTICWONK_API_URL added out of band would be silently deleted by the next deploy —
+      # putting a configured deployment back onto mock data, which is exactly the failure the
+      # mock's warning exists to make visible. update leaves other variables alone.
+      - '--update-env-vars=AUTH_URL=$_AUTH_URL'
+      # Pinned to one instance because the mock survey backend holds its pool and its
+      # participations in memory: a second instance has its own, so rankings and resumption
+      # would be intermittently wrong. REMOVE this once MYSTICWONK_API_URL is set and the real
+      # service owns the state — siblings run at 20.
+      - '--max-instances=1'
       - '--allow-unauthenticated'
     id: Deploy
     entrypoint: gcloud
