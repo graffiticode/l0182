@@ -28,11 +28,13 @@ export function ResultsItem({ item, frame }: ItemProps) {
           <li key={idea.id}>
             <IdeaRow
               text={idea.text}
+              // Inside the row, not under it: a score rendered as a sibling sat outside the
+              // border and read as unrelated to the idea above it.
+              sub={
+                item.showScores && typeof idea.score === "number" ? `Score: ${idea.score}%` : undefined
+              }
               badge={<span className="text-sm font-semibold text-green-700">{i + 1}</span>}
             />
-            {item.showScores && typeof idea.score === "number" && (
-              <p className="pl-11 pt-1 text-xs text-zinc-500">Score: {idea.score}%</p>
-            )}
           </li>
         ))}
       </ol>

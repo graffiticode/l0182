@@ -49,12 +49,15 @@ export function Stem({
  */
 export function IdeaRow({
   text,
+  sub,
   selected,
   badge,
   onClick,
   disabled,
 }: {
   text: string;
+  /** A second line under the text, inside the row — a score, on the results item. */
+  sub?: ReactNode;
   selected?: boolean;
   badge?: ReactNode;
   onClick?: () => void;
@@ -65,13 +68,16 @@ export function IdeaRow({
     <Tag
       {...(onClick ? { type: "button" as const, onClick, disabled, "aria-pressed": !!selected } : {})}
       className={cx(
-        "flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left text-[15px]",
+        "flex w-full items-start gap-3 rounded-md border px-4 py-3 text-left text-[15px]",
         onClick && "hover:border-zinc-400 disabled:opacity-50",
         selected ? "border-green-600 bg-green-50 text-green-900" : "border-zinc-200 bg-white",
       )}
     >
       <span className="flex h-6 w-6 shrink-0 items-center justify-center">{badge}</span>
-      <span className="min-w-0 flex-1">{text}</span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span>{text}</span>
+        {sub && <span className="text-xs text-zinc-500">{sub}</span>}
+      </span>
     </Tag>
   );
 }

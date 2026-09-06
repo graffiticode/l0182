@@ -258,10 +258,12 @@ submit, whether the participant may move on, and what the forward control reads.
 `Form` rather than in the components so every item's Back/Next behaves identically and the
 Skip/Next flip is stated once.
 
-- **Everything is controlled except `ContributeItem`.** A click is discrete: report it, read the
-  model back. An input reporting every keystroke would recompile the activity per character, so
-  the textarea drafts locally and commits on **blur**, with a `useRef` guard so a compile landing
-  mid-sentence cannot reset it. Copied from L0180's `ExtendedTextItem`, for the same reason.
+- **Every item is fully controlled**, including the textarea — and that is a deliberate
+  divergence from L0180. Its text inputs draft locally and commit on blur because there
+  `respond` writes to the model and every keystroke would recompile. Here the working `value` is
+  local React state owned by `Form`, and only *advancing* sends a `response`, so the deferral
+  bought nothing and cost the Skip/Next flip: the label stayed on "Skip" until the participant
+  clicked away from the box. Copy L0180's pattern only where reporting is expensive.
 - **`RankItem` offers drag *and* up/down buttons, and both are load-bearing.** HTML5 drag events
   do not fire on touch and there is no keyboard path through them, so for a survey taken by the
   general public on a phone the buttons are the accessible path, not a fallback.
