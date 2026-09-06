@@ -1,0 +1,27 @@
+{
+  "id": "0182",
+  "summary": "Collective-intelligence surveys — a participant is shown a sample of ideas from a shared pool, selects the ones they prefer, ranks them, contributes one of their own, and sees the group's live ranking.",
+  "in_scope": [
+    "Group ideation and brainstorming activities where participants both contribute ideas and choose between them",
+    "Showing each participant an adaptive sample of a large idea pool (typically 10 of many), so the pool can grow without bound",
+    "Selecting a bounded number of preferred ideas from that sample, via min-choices and max-choices",
+    "Rank-ordering the ideas a participant selected, to feed a preference-aggregation engine",
+    "Collecting one free-text idea per participant per pass, added to the shared pool for others to see",
+    "Showing the group's current ranking with scores and a participant count",
+    "Choosing which population a displayed ranking covers — all participants, humans only, or agents only",
+    "Accepting both human participants (through the rendered form) and AI agent participants (through MCP tools) into the same session",
+    "Anonymous, asynchronous participation with no facilitator and no scheduled session",
+    "Linear or nonlinear movement through the activity's items, and per-item or end-of-activity submission"
+  ],
+  "out_of_scope": [
+    "Assessment and quiz items — multiple choice with a right answer, hot text, cloze, matching, ordering, short answer, essays and rubrics. L0182 gathers opinions and does NOT score anyone; use L0180 for graded questions, and never route an assessment request here.",
+    "Scoring, marking, answer keys, correctness and points. A survey response is never right or wrong, so L0182 has no notion of a correct answer.",
+    "Conventional questionnaires and forms — demographics, Likert scales, satisfaction ratings, contact forms, sign-up flows and branching questionnaire logic are not built yet.",
+    "Owning the idea pool, drawing the sample, or computing the ranking. Those belong to the collective-intelligence service the activity names in `session`; L0182 declares the parameters and does NOT implement the aggregation engine.",
+    "Running the statistics — significance testing, clustering, sentiment analysis or any analysis of the responses collected.",
+    "Recruiting, quotas, screening, incentives and panel management.",
+    "Enforcing one response per person. Nothing here prevents a participant taking the activity twice, and it does NOT authenticate anyone.",
+    "Images, audio and video as the objects being ranked — an idea is a line of text.",
+    "Sections and item banks. An activity is a flat list of items; drawing N authored items from a bank is an assessment construct and is not built yet."
+  ]
+}

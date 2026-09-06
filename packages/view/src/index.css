@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /*
+   * Preflight is off (see tailwind.config.js) so this component never injects a global reset
+   * into a consumer app or into the page hosting the /form iframe. One preflight declaration
+   * is load-bearing for us, though: it sets `border-style: solid; border-width: 0` on every
+   * element, and without it Tailwind's `border-*` utilities set a colour and a width against
+   * CSS's default `border-style: none` — so every bordered card renders with no border at all.
+   *
+   * Restore exactly that one rule, scoped to our own subtree rather than the document.
+   */
+  .l0182-survey,
+  .l0182-survey *,
+  .l0182-survey *::before,
+  .l0182-survey *::after {
+    border-style: solid;
+    border-width: 0;
+  }
+
+  /*
+   * Preflight also resets `button`, and without it a survey's controls inherit the host
+   * page's button styling — which for a public survey embedded in someone else's site means
+   * the Next control can render as a native chrome button in the middle of the card.
+   */
+  .l0182-survey button {
+    background-color: transparent;
+    background-image: none;
+    font: inherit;
+    color: inherit;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .l0182-survey textarea {
+    font: inherit;
+    color: inherit;
+    margin: 0;
+  }
+}

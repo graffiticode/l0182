@@ -1,0 +1,13 @@
+items [
+  select [
+    prompt "What should we focus on next?"
+    sample 10
+    max-choices 5
+  ]
+  rank []
+  contribute [
+    prompt "Add an idea of your own."
+    optional
+  ]
+  results [ show-scores show-participants ]
+] title "You Can Choose" {}..

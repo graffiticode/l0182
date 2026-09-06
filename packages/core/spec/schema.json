@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "L0182",
+  "title": "L0182",
+  "description": "A compiled L0182 activity: the items a participant works through, the delivery settings that govern how they move between them, and — once someone has taken part — their response.",
+  "type": "object",
+  "required": ["activity"],
+  "properties": {
+    "activity": {
+      "description": "The authored instrument. Everything here is safe to send to a participant.",
+      "type": "object",
+      "required": ["participants", "navigation", "submission", "items"],
+      "properties": {
+        "title": {
+          "description": "Shown above every item.",
+          "type": "string"
+        },
+        "session": {
+          "description": "The collective-intelligence session this activity draws from and contributes to. Participants of one session share an idea pool and a ranking.",
+          "type": "string"
+        },
+        "participants": {
+          "description": "Which classes of participant may take part. A class is assigned by the server from the route that was called, never self-asserted by the caller.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["human", "agent"] }
+        },
+        "navigation": {
+          "description": "QTI's navigationMode. linear means a participant cannot return to an item they have left.",
+          "enum": ["linear", "nonlinear"]
+        },
+        "submission": {
+          "description": "QTI's submissionMode. individual submits each item as it is answered, which is what lets a participant resume mid-flow.",
+          "enum": ["individual", "simultaneous"]
+        },
+        "items": {
+          "description": "The items, in presentation order. Each carries the id its answer is keyed by.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/startItem" },
+              { "$ref": "#/$defs/selectItem" },
+              { "$ref": "#/$defs/rankItem" },
+              { "$ref": "#/$defs/contributeItem" },
+              { "$ref": "#/$defs/resultsItem" },
+              { "$ref": "#/$defs/thanksItem" }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "response": {
+      "description": "The participant's state, attached by the delivery loop rather than the author. The compiler never emits this key.",
+      "type": "object",
+      "required": ["participation"],
+      "properties": {
+        "participation": {
+          "description": "Identifies this participant's run. Held by the form as model state and by an agent as its participation token, so both clients resume the same way.",
+          "type": "string"
+        },
+        "actor": { "$ref": "#/$defs/actor" },
+        "item": {
+          "description": "The id of the item the participant is on. Explicit model state rather than something derived, because the program recompiles on every answer and a derived cursor would move underneath them.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "answers": {
+          "description": "What the participant has answered so far, keyed by item id as a string.",
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "$ref": "#/$defs/selectAnswer" },
+              { "$ref": "#/$defs/rankAnswer" },
+              { "$ref": "#/$defs/contributeAnswer" }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "itemBase": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": {
+          "description": "The item's position in the authored activity, from 0. Derived, so nothing can be answered under a name the activity does not present.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompt": { "description": "The prose shown on this item.", "type": "string" },
+        "hint": { "description": "A short line under the prompt saying what to do.", "type": "string" },
+        "button": { "description": "The label on the forward control.", "type": "string" }
+      }
+    },
+    "startItem": {
+      "title": "Start item",
+      "description": "Content only. Opens the activity behind a single control.",
+      "allOf": [{ "$ref": "#/$defs/itemBase" }],
+      "properties": {
+        "id": true,
+        "type": { "const": "start" },
+        "prompt": true,
+        "hint": true,
+        "button": true
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "selectItem": {
+      "title": "Select item",
+      "description": "A sample of ideas from the pool, of which the participant picks the ones they prefer. The sample is drawn at delivery by the session's adaptive sampler, so the ideas are not part of the authored activity.",
+      "allOf": [{ "$ref": "#/$defs/itemBase" }],
+      "properties": {
+        "id": true,
+        "type": { "const": "select" },
+        "prompt": true,
+        "hint": true,
+        "button": true,
+        "sample": {
+          "description": "How many ideas to draw for this participant.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "minChoices": {
+          "description": "Fewest ideas the participant may select.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxChoices": {
+          "description": "Most ideas the participant may select. Never more than `sample`.",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["type", "sample", "minChoices", "maxChoices"],
+      "additionalProperties": false
+    },
+    "rankItem": {
+      "title": "Rank item",
+      "description": "The ideas the participant selected, put into order of preference. Operates on a preceding select item's answer, so it carries no list of its own.",
+      "allOf": [{ "$ref": "#/$defs/itemBase" }],
+      "properties": {
+        "id": true,
+        "type": { "const": "rank" },
+        "prompt": true,
+        "hint": true,
+        "button": true
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "contributeItem": {
+      "title": "Contribute item",
+      "description": "One free-text idea, added to the shared pool.",
+      "allOf": [{ "$ref": "#/$defs/itemBase" }],
+      "properties": {
+        "id": true,
+        "type": { "const": "contribute" },
+        "prompt": true,
+        "hint": true,
+        "button": true,
+        "optional": {
+          "description": "Present and true when the participant may skip this item.",
+          "const": true
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "resultsItem": {
+      "title": "Results item",
+      "description": "Content only. The group's current ranking, computed by the session's engine at delivery.",
+      "allOf": [{ "$ref": "#/$defs/itemBase" }],
+      "properties": {
+        "id": true,
+        "type": { "const": "results" },
+        "prompt": true,
+        "hint": true,
+        "button": true,
+        "limit": {
+          "description": "How many ranked ideas to show.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "audience": {
+          "description": "Which population this ranking covers.",
+          "enum": ["all", "human", "agent"]
+        },
+        "showScores": { "description": "Show each idea's score.", "const": true },
+        "showParticipants": { "description": "Show how many have taken part.", "const": true }
+      },
+      "required": ["type", "limit", "audience"],
+      "additionalProperties": false
+    },
+    "thanksItem": {
+      "title": "Thanks item",
+      "description": "Content only. Closes the activity.",
+      "allOf": [{ "$ref": "#/$defs/itemBase" }],
+      "properties": {
+        "id": true,
+        "type": { "const": "thanks" },
+        "prompt": true,
+        "hint": true
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "actor": {
+      "title": "Participant class",
+      "description": "Who is taking part. Set by the server from the route that was called — a form request is human, an MCP request is agent — and never accepted from the caller, because a spoofable class would silently corrupt any later comparison between the two populations.",
+      "type": "object",
+      "required": ["class"],
+      "properties": {
+        "class": { "enum": ["human", "agent"] },
+        "via": {
+          "description": "The surface the participation came through.",
+          "enum": ["form", "mcp"]
+        },
+        "host": {
+          "description": "For an agent, the client host it was driven from.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "selectAnswer": {
+      "type": "object",
+      "required": ["selected"],
+      "properties": {
+        "selected": {
+          "description": "Ids of the ideas the participant chose, from the sample they were shown.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "rankAnswer": {
+      "type": "object",
+      "required": ["ranked"],
+      "properties": {
+        "ranked": {
+          "description": "The selected idea ids, most preferred first.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "contributeAnswer": {
+      "type": "object",
+      "required": ["contribution"],
+      "properties": {
+        "contribution": {
+          "description": "The idea the participant added. An empty string means they skipped.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

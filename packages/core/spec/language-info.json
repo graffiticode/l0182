@@ -1,0 +1,54 @@
+{
+  "id": "0182",
+  "description": "Collective-intelligence surveys — a participant is shown an adaptive sample of ideas from a shared pool, selects the ones they prefer, ranks them, contributes one of their own, and sees the group's live ranking. Humans take the activity through the rendered form; AI agents take the same activity through MCP tools, into the same pool.",
+  "supported_item_types": [
+    "start",
+    "select",
+    "rank",
+    "contribute",
+    "results",
+    "thanks"
+  ],
+  "example_prompts": [
+    {
+      "prompt": "A survey asking people what our team should focus on next quarter. Show each person 10 ideas and let them pick up to 5.",
+      "produces": "select",
+      "notes": "The canonical activity — one select item with sample 10 and max-choices 5."
+    },
+    {
+      "prompt": "After people pick their favourite ideas, have them drag those into order of importance.",
+      "produces": "rank",
+      "notes": "A rank item orders whatever the select before it gathered; it carries no list of its own."
+    },
+    {
+      "prompt": "Let people add one idea of their own after they have voted, but let them skip it.",
+      "produces": "contribute",
+      "notes": "`optional` is a bare flag — it takes no value."
+    },
+    {
+      "prompt": "Show the top 10 ideas with their scores and how many people have taken part.",
+      "produces": "results",
+      "notes": "limit 10 with show-scores and show-participants, both bare flags."
+    },
+    {
+      "prompt": "A complete flow: welcome, choose, rank, contribute, results, thanks.",
+      "produces": "start, select, rank, contribute, results, thanks",
+      "notes": "Each kind may appear once; start opens the activity and thanks closes it."
+    },
+    {
+      "prompt": "A survey that both people and AI agents can take, showing everyone the human ranking.",
+      "produces": "select, results",
+      "notes": "participants [\"human\" \"agent\"] on the activity, audience \"human\" on the results item."
+    },
+    {
+      "prompt": "A survey people cannot go back through once they have answered.",
+      "produces": "select",
+      "notes": "navigation \"linear\" — the default, chained after the items list."
+    },
+    {
+      "prompt": "Show each participant 12 ideas and let them select exactly 3.",
+      "produces": "select",
+      "notes": "min-choices 3 max-choices 3; max-choices can never exceed sample."
+    }
+  ]
+}
