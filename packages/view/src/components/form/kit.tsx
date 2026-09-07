@@ -32,10 +32,15 @@ export function Stem({
   hint?: string;
 }) {
   if (!title && !prompt && !hint) return null;
+  // The activity title repeats on every item, so it is a quiet label saying WHICH survey you
+  // are in — not a heading. Rendered as an h1 it competed with the prompt and read as though it
+  // described the screen, which on a results or thanks item it plainly does not.
   return (
     <div className="flex flex-col gap-3">
-      {title && <h1 className="text-xl font-semibold leading-tight text-zinc-900">{title}</h1>}
-      {prompt && <p className="text-[15px] leading-relaxed text-zinc-700">{prompt}</p>}
+      {title && (
+        <h1 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{title}</h1>
+      )}
+      {prompt && <p className="text-[15px] leading-relaxed text-zinc-800">{prompt}</p>}
       {hint && <p className="text-sm text-zinc-500">{hint}</p>}
     </div>
   );

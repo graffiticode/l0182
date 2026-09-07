@@ -35,6 +35,7 @@ export const Form = ({ state }: FormProps) => {
   const [value, setValue] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [finished, setFinished] = useState(false);
 
   const cursor = typeof response.item === "number" ? response.item : 0;
   const item = items[cursor];
@@ -97,6 +98,10 @@ export const Form = ({ state }: FormProps) => {
       return;
     }
 
+    // The last item of the activity: submitting it ends the run. Saying so is the difference
+    // between a control that finishes and one that appears to do nothing.
+    const last = cursor >= items.length - 1;
+
     setBusy(true);
     try {
       const next = await answerSurvey({ session, participation, participants, items: refs, item: cursor, answer });
@@ -115,6 +120,7 @@ export const Form = ({ state }: FormProps) => {
           },
         },
       });
+      if (last) setFinished(true);
     } catch (e: any) {
       setFailure(String(e?.message ?? e));
     } finally {
@@ -147,7 +153,12 @@ export const Form = ({ state }: FormProps) => {
 
     const { Body } = kind;
     const canAdvance = kind.ready(item, value);
-    const label = kind.label(item, value);
+    const isLast = cursor >= items.length - 1;
+
+    // No forward control when there is nowhere to go. A content item at the end of the activity
+    // used to render a "Next" that clamped the cursor to itself and did nothing — the reading
+    // of which is that the survey is broken, not that it is over.
+    const label = finished || (isLast && !kind.captures) ? "" : isLast ? "Done" : kind.label(item, value);
     // `linear` navigation is the author saying a participant may not revisit an answer.
     const canGoBack = activity.navigation === "nonlinear" && cursor > 0;
 
@@ -161,6 +172,9 @@ export const Form = ({ state }: FormProps) => {
         <Stem title={activity.title} prompt={item.prompt} hint={item.hint} />
         <Body item={item} frame={frame} value={value} setValue={setValue} />
         {failure && <ErrorList errors={[{ message: failure }]} />}
+        {finished && (
+          <p className="text-sm text-zinc-500">Thank you — your response has been recorded.</p>
+        )}
         <Nav
           onBack={canGoBack ? back : undefined}
           onNext={label ? advance : undefined}

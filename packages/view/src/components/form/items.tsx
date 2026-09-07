@@ -29,6 +29,14 @@ export interface ItemProps {
 
 export interface ItemKind {
   Body: (p: ItemProps) => JSX.Element | null;
+  /**
+   * Whether this kind asks the participant for something.
+   *
+   * `Form` needs this BEFORE building an answer, to decide whether the last item of an activity
+   * should carry a forward control at all — a content item at the end has nothing to submit and
+   * nowhere to go.
+   */
+  captures: boolean;
   /** The value this item starts from, given what the server sent and what was answered before. */
   initial: (item: any, frame: Frame | null, answered: any) => any;
   /** The answer to submit, or null when this item captures nothing. */
@@ -44,6 +52,7 @@ const Content = (_p: ItemProps) => null;
 
 const contentKind = (defaultLabel: string): ItemKind => ({
   Body: Content,
+  captures: false,
   initial: () => null,
   answer: () => null,
   ready: () => true,
@@ -55,6 +64,7 @@ export const KINDS: Record<string, ItemKind> = {
 
   select: {
     Body: SelectItem,
+    captures: true,
     initial: (_item, _frame, answered) => (Array.isArray(answered?.selected) ? answered.selected : []),
     answer: (_item, value) => ({ selected: value as string[] }),
     // The author's floor is a real gate: `min-choices 1` means the participant must pick one.
@@ -64,6 +74,7 @@ export const KINDS: Record<string, ItemKind> = {
 
   rank: {
     Body: RankItem,
+    captures: true,
     initial: (_item, frame, answered) =>
       Array.isArray(answered?.ranked) ? answered.ranked : (frame?.selected || []).map((i) => i.id),
     answer: (_item, value) => ({ ranked: value as string[] }),
@@ -73,6 +84,7 @@ export const KINDS: Record<string, ItemKind> = {
 
   contribute: {
     Body: ContributeItem,
+    captures: true,
     initial: (_item, _frame, answered) =>
       typeof answered?.contribution === "string" ? answered.contribution : "",
     answer: (_item, value) => ({ contribution: String(value ?? "").trim() }),
@@ -86,6 +98,7 @@ export const KINDS: Record<string, ItemKind> = {
 
   results: {
     Body: ResultsItem,
+    captures: false,
     initial: () => null,
     answer: () => null,
     ready: () => true,

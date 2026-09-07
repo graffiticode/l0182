@@ -172,3 +172,28 @@ describe("a whole run", () => {
     ]);
   });
 });
+
+describe("the end of an activity", () => {
+  // A content item at the end used to render a "Next" that clamped the cursor to itself and
+  // did nothing, which reads as a broken survey rather than a finished one. `captures` is what
+  // lets Form tell "nothing to submit and nowhere to go" from "submit, then stop".
+  it("marks which kinds ask the participant for something", () => {
+    expect(KINDS.select.captures).toBe(true);
+    expect(KINDS.rank.captures).toBe(true);
+    expect(KINDS.contribute.captures).toBe(true);
+    expect(KINDS.start.captures).toBe(false);
+    expect(KINDS.results.captures).toBe(false);
+    expect(KINDS.thanks.captures).toBe(false);
+  });
+
+  it("agrees with whether the kind actually builds an answer", () => {
+    // The flag and the behaviour must not drift: a kind that captures must produce an answer,
+    // and one that does not must produce null.
+    for (const [name, kind] of Object.entries(KINDS)) {
+      const built = kind.answer({ type: name }, kind.initial({ type: name }, frame(), undefined));
+      expect(built === null, `${name}: captures=${kind.captures} but answer() disagrees`).toBe(
+        !kind.captures,
+      );
+    }
+  });
+});
