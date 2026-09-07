@@ -98,7 +98,19 @@ export const createApp = ({ authUrl }: { authUrl?: string } = {}) => {
   // while the new assets sat there unreferenced. Nothing was broken, and nothing was live
   // either — a failure that looks exactly like a successful deploy.
   app.get("/form", (_req: Request, res: Response) => {
-    res.setHeader("Cache-Control", "no-cache");
+    // The embed HTML names the content-hashed bundle it loads, so caching it caches the whole
+    // deploy: the new assets sit there unreferenced while every visitor keeps running the
+    // previous build. Nothing is broken and nothing is live — a failure that looks exactly
+    // like a successful deploy.
+    //
+    // `no-cache` alone was not enough once this domain went behind Cloudflare, which served a
+    // HIT with `age: 1191` and rewrote the header to `max-age=3600`. A CDN honours
+    // CDN-Cache-Control (and Cloudflare its own vendor header) ahead of Cache-Control, so all
+    // three go out. The hashed assets under /assets stay immutable — a new build is a new name,
+    // and only this HTML must never be held.
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.setHeader("CDN-Cache-Control", "no-store");
+    res.setHeader("Cloudflare-CDN-Cache-Control", "no-store");
     res.sendFile(path.join(STATIC_DIR, "index.html"));
   });
 
