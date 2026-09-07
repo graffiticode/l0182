@@ -31,10 +31,13 @@ npm run dev        # API on :50182 (expects Firestore emulator :8080, local auth
 npm run start      # the built API server
 npm test           # core + api + view suites
 npm run lint       # ESLint over the monorepo
-npm run gcp:deploy # Cloud Run as l0182, us-central1, port 50182
+npm run format     # Prettier over the monorepo (printWidth 100, double quotes)
+npm run gcp:deploy # Cloud Run as l0182, us-central1 — but read "Deploying" first
 
 npm run -w packages/view dev   # the /form embed app on Vite alone, no API, no auth
 ```
+
+Node 22 (`.nvmrc`, and `engines` refuses lower), npm workspaces.
 
 `npm run assemble` wipes and repopulates `packages/api/static/` from `core/dist/static` and
 `view/dist-embed`. It is not incremental — a stale file cannot survive it, which is the point.
@@ -42,6 +45,50 @@ npm run -w packages/view dev   # the /form embed app on Vite alone, no API, no a
 Tests are Vitest, colocated as `*.test.ts`, and there is no root config — each workspace runs
 its own. **The core suite must run with `packages/core` as the cwd**, which the workspace script
 does: `docs.test.ts` reads `spec/*` by relative path.
+
+Run one file, or one case, through that same workspace script for the same reason — `npx vitest`
+from the root has the wrong cwd:
+
+```bash
+npm run -w packages/core test -- src/items.test.ts
+npm run -w packages/core test -- src/items.test.ts -t "sample"
+```
+
+### Environment
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PORT` | `50182` | The language server's port |
+| `AUTH_URL` | `https://auth.graffiticode.org` | Token verification |
+| `MYSTICWONK_API_URL` | — | The collective-intelligence service the proxy forwards to. **Unset → the built-in mock** |
+| `MYSTICWONK_API_KEY` | — | Its credential. Server-side only; never sent to a client |
+
+### Deploying
+
+Two rules hold the deployed service together. All three Cloud Build configs now carry both —
+`cloudbuild.yaml` (what `npm run gcp:build` submits), plus `cloudbuild.production.yaml` and
+`cloudbuild.staging.yaml` (the GitHub triggers described in `GITHUB_DEPLOYMENT.md`). **A new
+deploy path has to carry them too:**
+
+- **`--update-env-vars`, never `--set-env-vars`.** `set` replaces the whole environment, so a
+  `MYSTICWONK_API_URL` added out of band is silently deleted by the next deploy — putting a
+  configured deployment back onto mock data, which is exactly the failure the mock's warning
+  exists to make visible.
+- **`--max-instances=1`**, because the mock holds its pool and its participations in memory and
+  a second instance has its own. Sibling languages run at 20. **Remove the pin once
+  `MYSTICWONK_API_URL` is set** and the real service owns the state.
+
+`npm run gcp:deploy` builds from source and passes neither flag. On an existing service Cloud
+Run carries the current scaling and environment forward, so it is safe for a code-only push and
+cannot be used to change either.
+
+**Both trigger configs originally obeyed neither rule**, and production deploys the same
+`l0182` service: `--set-env-vars=AUTH_URL,NODE_ENV=production` with
+`--max-instances=$_MAX_INSTANCES` (default 100), so one push to `main` would have wiped
+`MYSTICWONK_*` and unpinned the mock in a single build. Both were corrected to match, and
+production's `_MAX_INSTANCES` substitution was **removed rather than defaulted to 1** — a value
+that must be 1 should not be a knob a trigger can raise. Restore it, in all three files, when
+the pin comes out.
 
 ## Architecture
 
@@ -51,6 +98,7 @@ Three workspaces on the published `@graffiticode/l0000` and `@graffiticode/l0000
   as data; `lexicon.ts` and `compiler.ts` both generate from it; `spec/` is what agents read.
 - **`packages/api`** (`@graffiticode/api-l0182`, private) — Express: `POST /compile`,
   `GET /form`, a health check at `/`, the assembled static assets, **and the survey proxy**.
+  Its middleware order and cache headers are load-bearing — see "What `app.ts` serves".
 - **`packages/view`** (`@graffiticode/l0182-view`) — the survey player.
 
 ### Two attribute tables, because there are two levels
@@ -165,6 +213,28 @@ compiled one would render a stale activity forever. L0179 spreads the other way 
 learner edits live inside the compiled structure); L0181 also spreads data last, which is right
 for its deck and **wrong here**. A response is a separate key the compiler never emits.
 
+### What `app.ts` serves, and why the order and the headers are load-bearing
+
+Four rules, three of which are shipped bug fixes. Changing any of them looks harmless locally,
+where there is no CDN and no cross-origin host.
+
+- **Public static is mounted BEFORE auth.** `lexicon.json`, `schema.json`, `spec.html`,
+  `instructions.md`, `language-info.json`, `usage-guide.md`, `scope.json` and `template.gc` must
+  be fetchable with no token — an agent reads them before it has one. `index: false` keeps
+  `GET /` a health check rather than the embed's `index.html`.
+- **`/assets/*` is immutable, `/form` must never be held.** The bundle's filenames carry a
+  content hash, so a new build is a new name and those may be cached forever. The embed HTML
+  *names* that bundle, so caching it caches the whole deploy: new assets sit there unreferenced
+  while every visitor keeps running the previous build — a failure that looks exactly like a
+  successful deploy. `no-cache` alone was not enough behind Cloudflare, which served a HIT with
+  `age: 1191` and rewrote the header, so `/form` goes out with `Cache-Control`,
+  `CDN-Cache-Control` **and** `Cloudflare-CDN-Cache-Control` all `no-store`.
+- **`Cross-Origin-Resource-Policy: cross-origin` on every response.** Without it a COEP-isolated
+  host — the claude.ai and chatgpt.com widget iframes — blocks the `/form` frame outright.
+- **`GET /lexicon.js` is aliased to `lexicon.json`** for the still-deployed console, which
+  slices from the first `{` and parses. No `lexicon.js` is emitted; drop the alias once the
+  console migrates (Stage 3).
+
 ## The survey proxy is where the two clients meet
 
 `packages/api/src/survey.ts` and `routes/survey.ts`. `POST /survey/open`,
@@ -178,6 +248,12 @@ is annotated `destructiveHint: true`. Routing participants through it would be r
 
 The service credential (`MYSTICWONK_API_KEY`) lives here and never reaches a browser or an
 agent. That is the reason the proxy exists rather than the clients calling the service directly.
+
+**`parity.test.ts` is the acceptance test for that claim**, and it is the one most likely to be
+broken by an innocent-looking change and then misread as noise. It drives a human and an agent
+through the same proxy functions the routes call, against a recorded service, and asserts the
+two runs differ in **exactly one field**. If it fails, the two paths diverged: converge them.
+Relaxing the assertion deletes the only check on the property this language exists to have.
 
 ### The mock backend, and what it is honest about
 
@@ -201,8 +277,8 @@ Two things it gets right that are easy to get wrong:
   this language exists to demonstrate would be untested.
 
 Scoring is selections over times-shown. The real engine is MCMC over the micro-rankings; this is
-a tally and no amount of tidying makes it that. State is in-memory, so deploy `--max-instances 1`
-while mocked.
+a tally and no amount of tidying makes it that. State is in-memory, so deploy
+`--max-instances 1` while mocked — the pin lives in `cloudbuild.yaml`, see "Deploying".
 
 ### The clients pass the item sequence, because the proxy cannot see it
 
@@ -257,6 +333,12 @@ Each registry entry says how to render the body, what value the item starts from
 submit, whether the participant may move on, and what the forward control reads. Nav lives in
 `Form` rather than in the components so every item's Back/Next behaves identically and the
 Skip/Next flip is stated once.
+
+**There is no DOM in the view suite, deliberately.** `vitest.config.ts` pulls in no jsdom, so
+`kinds.test.ts` and `reduce.test.ts` test the registry's state machine and the reducer as pure
+functions — which is what keeps a published component's dev tree free of jsdom and a rendering
+library. Do not reach for a render test when adding a kind; put the logic in the registry entry,
+where it can be tested, and keep the component a projection of it.
 
 - **Every item is fully controlled**, including the textarea — and that is a deliberate
   divergence from L0180. Its text inputs draft locally and commit on blur because there
@@ -314,6 +396,12 @@ accurately, so re-read `scope.json` whenever the language gains one.
 `authoring_guide`, and the build **fails** if it is missing or under 100 chars. Edit the
 Overview, not the JSON.
 
+**Two of the served assets are not the file you edited.** `build-static.js` concatenates
+L0000's `instructions.md` with L0182's, and `lexicon.json` is the merged base + L0182 lexicon,
+so `static/instructions.md` legitimately holds prose that appears in no file in this repo —
+editing `spec/instructions.md` changes only the tail. Diff `spec/` against `static/` with that
+in mind.
+
 ## Adding an item kind
 
 1. Add its words to `attributeFields`, its container to `lexicon.ts`, and the kind to
@@ -322,7 +410,8 @@ Overview, not the JSON.
 3. Add a `buildItem` case in `items.ts`, with its defaults and its error messages.
 4. Extend `validateSequence` if it constrains where it may sit.
 5. Add a renderer and register it in `KINDS` in `packages/view/src/components/form/items.tsx`
-   — not in `Form.tsx`, which chooses nothing by name.
+   — not in `Form.tsx`, which chooses nothing by name. Test the registry entry in
+   `kinds.test.ts`; there is no DOM to render into.
 6. Extend `spec/schema.json`: a `$defs` entry **and** the `oneOf` in `activity.items`.
 7. Document it in `spec/instructions.md` (the container table **and** the generated Functions
    table) and in `spec/spec.md`, each with a compiling example.

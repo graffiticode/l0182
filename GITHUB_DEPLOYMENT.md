@@ -33,8 +33,12 @@ Cloud Build triggers automatically deploy your code when you push to GitHub.
      - `_DEPLOY_REGION`: `us-central1`
      - `_AUTH_URL`: `https://auth.graffiticode.org`
      - `_MIN_INSTANCES`: `1`
-     - `_MAX_INSTANCES`: `100`
      - `_MEMORY`: `512Mi`
+
+   There is deliberately no `_MAX_INSTANCES`: while the survey backend is the built-in mock it
+   holds its pool in memory, so `cloudbuild.production.yaml` pins `--max-instances=1` and the
+   value is not a knob a trigger can raise. Remove the pin in that file once
+   `MYSTICWONK_API_URL` is set.
 
 3. Click "Create"
 

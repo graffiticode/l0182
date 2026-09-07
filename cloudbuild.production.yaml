@@ -43,10 +43,18 @@ steps:
       - '--region=$_DEPLOY_REGION'
       - '--quiet'
       - '--port=50182'
-      - '--set-env-vars=AUTH_URL=$_AUTH_URL,NODE_ENV=production'
+      # --update-env-vars, NOT --set-env-vars: set replaces the whole environment, so a
+      # MYSTICWONK_API_URL added out of band would be silently deleted by this deploy —
+      # putting a configured deployment back onto mock data, which is exactly the failure the
+      # mock's warning exists to make visible. update leaves other variables alone.
+      - '--update-env-vars=AUTH_URL=$_AUTH_URL,NODE_ENV=production'
       - '--allow-unauthenticated'
       - '--min-instances=$_MIN_INSTANCES'
-      - '--max-instances=$_MAX_INSTANCES'
+      # Pinned to one instance because the mock survey backend holds its pool and its
+      # participations in memory: a second instance has its own, so rankings and resumption
+      # would be intermittently wrong. REMOVE this once MYSTICWONK_API_URL is set and the real
+      # service owns the state — siblings run at 20.
+      - '--max-instances=1'
       - '--memory=$_MEMORY'
     id: Deploy
     entrypoint: gcloud
@@ -63,7 +71,6 @@ substitutions:
   _DEPLOY_REGION: us-central1
   _AUTH_URL: https://auth.graffiticode.org
   _MIN_INSTANCES: '0'
-  _MAX_INSTANCES: '100'
   _MEMORY: '512Mi'
 
 tags:
