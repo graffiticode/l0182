@@ -334,14 +334,25 @@ Overview, not the JSON.
 The languages are deliberately independent — no shared module, no conformance test between them
 — so **this section is the whole contract**. Keep it accurate.
 
-L0180 copies, and only this:
+**Done — L0180 has it** (branch `activity-level`). What moved:
 
-- the words `items` (arity 2), and `navigation`, `submission`, `title` (arity 2, chaining)
+- the words `items` (arity 2), and `navigation`, `submission` (arity 2, chaining)
 - `NAVIGATION_MODES = ["linear","nonlinear"]`, `SUBMISSION_MODES = ["individual","simultaneous"]`
 - the `ITEMS` member-list Transformer, and `activity.ts` entire
 - the emitted shape `{ activity: { navigation, submission, items: [...] } }`
 
-In L0180 the members are its existing `item [ stimulus [...] parts [...] {} ]`, so the two nest
+**`title` could not go, and that is the one correction to this contract.** It was listed here at
+arity 2; L0180 already has `title` at arity 1 inside `stimulus`, and the lexicon gives a word
+exactly one arity, so taking it would have broken every stimulus in its corpus. An activity
+there has no name. Anything added to `configFields` here has to be checked against L0180's
+existing vocabulary before it can be called portable.
+
+Two things were deliberately NOT copied, and both are cases where the same word means something
+different: L0180 defaults to `nonlinear`/`simultaneous`, because that is what its renderer
+already does — every item on one screen, nothing submitted in between — and its activity cursor
+is local React state rather than model state, because nothing there is persisted mid-activity.
+
+In L0180 the members are its existing `item [ stimulus [...] parts [...] {} ]`, and they nested
 without change. **Sections belong there, not here** — that is where QTI's `selection` and
 `ordering` over an item bank have work to do.
 
