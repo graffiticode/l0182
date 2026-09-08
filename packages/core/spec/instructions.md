@@ -1,203 +1,152 @@
 # L0182 — collective-intelligence surveys
 
-L0182 authors a **survey activity**: a participant is shown a sample of ideas from a shared
-pool, selects the ones they prefer, ranks them, contributes one of their own, and sees the
-group's live ranking.
+L0182 is a **survey record**: a named set of ideas someone is asked to choose between, and the
+response to it — the ideas chosen in priority order, plus one new idea that was not in the set.
 
 OUT_OF_SCOPE: assessment and quiz items — anything with a right answer, points, marking or a
 rubric. L0182 gathers opinions and does NOT score anyone. Use L0180 for graded questions.
 Conventional questionnaires (Likert scales, demographics, satisfaction ratings, branching form
-logic) are not built yet. L0182 does NOT own the idea pool, draw the sample or compute the
-ranking — the service named in `session` does that.
+logic) are not built yet. L0182 does NOT implement a survey-taking flow: it has no screens,
+steps, navigation or submission, and it never draws a sample or aggregates across respondents.
 
 ## The shape of a program
 
-An activity **is a list of items**, followed by the activity's settings, ending in a record.
+One word, `survey`, applied to an attribute list.
 
 ```
-items [
-  select [
-    prompt "What should we focus on next?"
-    sample 10
-    max-choices 5
+survey [
+  name "you-can-choose"
+  title "You Can Choose"
+  ideas [
+    "protect voting rights"
+    "universal healthcare system"
+    "affordable housing"
   ]
-  rank []
-  contribute [ optional ]
-  results [ show-scores ]
-] title "You Can Choose" session "abc123" {}..
+  max-choices 2
+]..
 ```
 
-Three rules cover every attribute:
+Every word in the language takes exactly one argument. Nothing chains, and nothing takes a
+trailing record.
 
-| Target shape | How it is written |
-| :----------- | :---------------- |
-| an item | a word applied to an attribute list — `select [sample 10 max-choices 5]` |
-| a scalar, or a list of scalars | the value itself — `sample 10`, `participants ["human"]` |
-| the activity's settings | words chained **after** the items list, ending in `{}` |
+| Target shape                | How it is written                                                   |
+| :-------------------------- | :------------------------------------------------------------------ |
+| the survey, or the response | a word applied to an attribute list — `response [selection ["i0"]]` |
+| a scalar                    | the value itself — `max-choices 5`, `title "…"`                     |
+| a list                      | the list itself — `ideas ["…" "…"]`, `selection ["i2" "i0"]`        |
 
-## The five words that go outside the brackets
+## The ideas are written at code generation
 
-These configure the whole activity, so they are written **after** the `items [...]` list and
-**before** the closing `{}`. They are the only words in L0182 that take two arguments.
-
-| Word | Values | Meaning |
-| :--- | :----- | :------ |
-| `title` | string | Shown above every item. |
-| `session` | string | The collective-intelligence session this activity draws from and contributes to. |
-| `participants` | `["human"]`, `["agent"]`, or both | Which classes may take part. Both when omitted. |
-| `navigation` | `"linear"`, `"nonlinear"` | QTI's navigationMode. `linear` (the default) means no going back. |
-| `submission` | `"individual"`, `"simultaneous"` | QTI's submissionMode. `individual` (the default) submits each item as it is answered. |
-
-Writing one of these **inside** an item is the most common mistake, and if it is the last word
-in the brackets the parser rejects the program before the compiler can explain. Always put them
-after the list:
+**Never invent the ideas.** They are resolved from the survey's `name` against the service that
+holds the pool — through an L0170 `fetch` — and the set that comes back is inlined into the
+program. An entry is a line of text, or a record naming the id the service knows it by:
 
 ```
-items [ select [sample 10 max-choices 5] ] title "Ideas" navigation "linear" {}..
+survey [
+  name "you-can-choose"
+  ideas [
+    {id: "a3" text: "protect voting rights"}
+    {id: "b7" text: "affordable housing"}
+  ]
+]..
 ```
 
-The chain must end in a record. Write `{}` when there is nothing to configure:
+Keep the service's ids whenever the fetch returned them — a selection of positional ids means
+nothing back at the service. An entry with no id is numbered by position, `i0` upward.
+
+A set needs at least two ideas. No two may repeat the same text, and no two may share an id.
+
+## The response
 
 ```
-items [ select [sample 8] ] {}..
+survey [
+  name "priorities"
+  ideas ["clean air and water" "affordable housing" "invest in public transit"]
+  response [
+    selection ["i2" "i0"]
+    idea "protect public lands from being sold off"
+  ]
+]..
 ```
 
-## The items
+- `selection` carries idea **ids**, never their text, and **the order is the ranking** — first
+  is most important. Every id must name an idea in the set, and none may appear twice.
+- `idea` is one new idea from whoever answered. It must NOT repeat an idea already in the set —
+  that is what makes it new. It may stand alone, with nothing selected.
 
-| Item | What it does |
-| :--- | :----------- |
-| `start` | Content only. Opens the activity behind a single control. |
-| `select` | Shows a sample of ideas; the participant picks the ones they prefer. |
-| `rank` | The participant orders the ideas they selected. Needs a `select` before it. |
-| `contribute` | The participant adds one idea of their own to the pool. |
-| `results` | Content only. The group's current ranking. |
-| `thanks` | Content only. Closes the activity. |
-
-Each kind may appear once. `start` comes first, `thanks` last, and an activity must ask the
-participant for at least one thing — a `select`, a `rank` or a `contribute`.
+`response` is written inside the survey's brackets and lifted to the top level of the compiled
+record. A program with no `response` is a survey awaiting one, which is what code generation
+produces.
 
 ## Which words each container takes
 
-| Container | Takes |
-| :-------- | :---- |
-| `activity` | title, session, participants, navigation, submission |
-| `start` | prompt, hint, button |
-| `select` | prompt, hint, button, sample, min-choices, max-choices |
-| `rank` | prompt, hint, button |
-| `contribute` | prompt, hint, button, optional |
-| `results` | prompt, hint, button, limit, audience, show-scores, show-participants |
-| `thanks` | prompt, hint |
+| Container  | Takes                                                  |
+| :--------- | :----------------------------------------------------- |
+| `survey`   | name, title, ideas, min-choices, max-choices, response |
+| `response` | selection, idea                                        |
 
-`activity` is not a word — the activity is the program. Its row names the five settings that
-chain after the items list.
+## Selection bounds
 
-## What each word means
-
-| Word | Takes | Meaning |
-| :--- | :---- | :------ |
-| `prompt` | string | The prose shown on this item. |
-| `hint` | string | A short line under the prompt. Derived when omitted — `select` and `rank` write their own. |
-| `button` | string | The label on the forward control. Defaults to `"Next"`, or `"Start"` on a `start` item. |
-| `sample` | number | How many ideas to draw from the pool. Required on `select`. |
-| `min-choices` | number | Fewest ideas the participant may select. Defaults to 0. |
-| `max-choices` | number | Most ideas they may select. Defaults to `sample`, and can never exceed it. |
-| `limit` | number | How many ranked ideas `results` shows. Defaults to 10. |
-| `audience` | `"all"`, `"human"`, `"agent"` | Which population the ranking covers. Defaults to `"all"`. |
-| `optional` | — | Stands alone. The participant may skip this item. |
-| `show-scores` | — | Stands alone. Show each ranked idea's score. |
-| `show-participants` | — | Stands alone. Show how many have taken part. |
-
-`optional`, `show-scores` and `show-participants` take **no value**. Write them bare:
+`min-choices` defaults to 0 and `max-choices` to the number of ideas. `max-choices` can never
+exceed the size of the set, and `min-choices` can never exceed `max-choices`. A `selection` is
+checked against both.
 
 ```
-items [
-  select [sample 10 max-choices 3]
-  contribute [ optional prompt "Add one idea." ]
-  results [ show-scores show-participants limit 5 ]
-] {}..
+survey [ name "priorities" ideas ["one" "two" "three"] min-choices 1 max-choices 2 ]..
 ```
 
-## The ideas are not authored
+Nothing enforces these at delivery, because there is no delivery — the compiler is the only
+check there is.
 
-An activity never lists the ideas. They live in the pool the `session` names, they are
-contributed by participants, and each participant is shown a different adaptive sample of them
-at delivery. `sample 10` says *how many* to draw, not which.
+## There is no flow
 
-That is also why `rank` carries no list: it orders whatever the `select` before it gathered.
+L0182 does not describe screens, steps, ordering, navigation or submission. It does not draw a
+sample, does not hold a pool, and does not aggregate anything across respondents. A program is
+one set of ideas and at most one response to it.
 
-## Humans and agents
-
-The same activity is taken by people through the rendered form and by AI agents through MCP
-tools, and both land in the same pool. `participants` says which classes are accepted;
-`audience` on a `results` item says which population its ranking covers, so a survey can show
-everyone the combined ranking while keeping the two separable:
-
-```
-items [
-  select [sample 10 max-choices 5]
-  rank []
-  results [ audience "human" show-scores ]
-] participants ["human" "agent"] {}..
-```
-
-A participant's class is decided by the server from the route they arrived on. It is never
-something the activity or the caller asserts.
+The code IS the interface: a person edits the program in the console, an agent edits it through
+`update_item`, and both produce the same record. The renderer shows the set as it was given
+beside what came back.
 
 ## Functions
 
-Every word L0182 adds to the base language. Arity 2 means the word chains — see “The five
-words that go outside the brackets” above.
+Every word L0182 adds to the base language. All are arity 1.
 
-| Word | Signature | Arity | Meaning |
-| :--- | :-------- | :---: | :------ |
-| `prompt` | `<string: record>` | 1 | The prose shown to the participant on this item. |
-| `hint` | `<string: record>` | 1 | A short line under the prompt telling the participant what to do, e.g. "Drag to reorder.". Derived from the item when omitted. |
-| `button` | `<string: record>` | 1 | The label on this item's forward control. Defaults to "Next". |
-| `sample` | `<number: record>` | 1 | How many ideas to draw from the pool for this participant. The draw is the service's adaptive sample, not a random slice, which is what lets the pool grow without bound. |
-| `min-choices` | `<number: record>` | 1 | Fewest ideas the participant may select. Defaults to 0. |
-| `max-choices` | `<number: record>` | 1 | Most ideas the participant may select. |
-| `limit` | `<number: record>` | 1 | How many ranked ideas to show. Defaults to 10. |
-| `audience` | `<string: record>` | 1 | Which population this ranking covers: all participants, humans only, or agents only. Authored rather than a runtime flag, so the result a participant sees is reproducible. |
-| `optional` | `<: record>` | 0 | The participant may skip this item. Stands alone — it takes no value. The forward control reads Skip until they enter something. |
-| `show-scores` | `<: record>` | 0 | Show each ranked idea's score. Stands alone — it takes no value. |
-| `show-participants` | `<: record>` | 0 | Show how many people have taken part. Stands alone — it takes no value. |
-| `title` | `<string record: record>` | 2 | The activity's title, shown above every item. |
-| `session` | `<string record: record>` | 2 | The collective-intelligence session this activity draws from and contributes to. Every participant of a session shares one idea pool and one ranking. |
-| `participants` | `<list record: record>` | 2 | Which classes of participant may take part: human, agent, or both. Both when omitted. |
-| `navigation` | `<string record: record>` | 2 | QTI's navigationMode. `linear` (the default) means a participant cannot return to an item they have left; `nonlinear` lets them move freely. |
-| `submission` | `<string record: record>` | 2 | QTI's submissionMode. `individual` (the default) submits each item as it is answered, which is what lets a participant resume mid-flow; `simultaneous` holds everything to the end. |
-| `items` | `<list record: record>` | 2 | The activity: the items a participant works through, in order, then the activity's configuration. |
-| `start` | `<list: record>` | 1 | A content-only item that opens the activity behind a single control. |
-| `select` | `<list: record>` | 1 | The participant is shown a sample of ideas from the pool and picks the ones they prefer. |
-| `rank` | `<list: record>` | 1 | The participant puts the ideas they selected into order of preference. |
-| `contribute` | `<list: record>` | 1 | The participant adds one idea of their own to the pool. |
-| `results` | `<list: record>` | 1 | A content-only item showing the group's current ranking. |
-| `thanks` | `<list: record>` | 1 | A content-only item that closes the activity. |
+| Word          | Signature          | Arity | Meaning                                                                                                                                                                             |
+| :------------ | :----------------- | :---: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | `<string: record>` |   1   | The survey this set of ideas was drawn from. It is what ties a response back to the survey it answers, and it is the argument code generation resolves the idea set from.           |
+| `title`       | `<string: record>` |   1   | The survey's title, shown above the ideas.                                                                                                                                          |
+| `ideas`       | `<list: record>`   |   1   | The set of ideas this response is chosen from, written at code generation. Each entry is a line of text, or a record naming the service's own id: ideas ["…" {id: "a3" text: "…"}]. |
+| `min-choices` | `<number: record>` |   1   | Fewest ideas a response may select. Defaults to 0.                                                                                                                                  |
+| `max-choices` | `<number: record>` |   1   | Most ideas a response may select. Defaults to the number of ideas.                                                                                                                  |
+| `selection`   | `<list: record>`   |   1   | The ids of the ideas chosen, in priority order — the order IS the ranking, first is most important.                                                                                 |
+| `idea`        | `<string: record>` |   1   | One new idea, contributed by whoever answered. It must not repeat an idea already in the set — that is what makes it new.                                                           |
+| `survey`      | `<list: record>`   |   1   | A named set of ideas to choose from, and optionally the response to it.                                                                                                             |
+| `response`    | `<list: record>`   |   1   | The ideas chosen, in priority order, and optionally one new idea that was not in the set.                                                                                           |
 
 ## A full example
 
 ```
-items [
-  start [ prompt "This takes about two minutes." button "Start" ]
-  select [
-    prompt "Below is a list of things people have said they'd like their representatives to focus on. Please click to select up to 5 issues that matter most to you."
-    sample 10
-    min-choices 0
-    max-choices 5
+survey [
+  name "you-can-choose"
+  title "You Can Choose"
+  ideas [
+    {id: "a3" text: "protect voting rights"}
+    {id: "b7" text: "universal healthcare system"}
+    {id: "c1" text: "protect public lands and waters from being sold off"}
+    {id: "d9" text: "affordable housing"}
+    {id: "e4" text: "remove profit from healthcare"}
+    {id: "f2" text: "end Citizens United"}
+    {id: "g8" text: "mitigate climate change"}
+    {id: "h5" text: "clean air and water"}
+    {id: "j7" text: "lower prescription drug prices"}
+    {id: "k1" text: "strengthen public schools"}
   ]
-  rank [
-    prompt "These are the ideas that matter the most to you. Drag them up or down to show their order of importance to you."
+  min-choices 1
+  max-choices 5
+  response [
+    selection ["d9" "a3" "h5"]
+    idea "make public transit free at the point of use"
   ]
-  contribute [
-    prompt "Please enter only one idea at a time. If you enter several ideas in one statement, people may not vote for it."
-    optional
-  ]
-  results [
-    prompt "These are the things that you and others have told us you want your elected leaders to focus on."
-    limit 10
-    show-scores
-    show-participants
-  ]
-  thanks [ prompt "We hear you! Come back if you have more ideas." ]
-] title "You Can Choose" session "6a2ee894b1a5da8a744290db" navigation "linear" submission "individual" {}..
+]..
 ```

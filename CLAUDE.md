@@ -5,23 +5,27 @@ repository.
 
 ## What this is
 
-L0182 is a Graffiticode dialect for **collective-intelligence surveys**. A participant is shown
-a sample of ideas drawn from a shared pool, selects the ones they prefer, ranks those
-selections, may contribute one idea of their own, and sees the group's live ranking. A
-Markov/MCMC engine stitches those micro-rankings into a global one.
+L0182 is a Graffiticode dialect for **collective-intelligence surveys**. A program is a named
+set of ideas someone is asked to choose between, and — once something has answered — the
+response to it: the ideas chosen in priority order, plus one new idea that was not in the set.
 
-It exists to make the survey *instrument* an authored, versioned, forkable artifact rather than
-a hard-coded app screen — and, having done that, to drive **two clients from one instrument**:
-people through the rendered form, AI agents through MCP tools, into the same pool.
+Three commitments the rest of the design follows from:
 
-Two commitments the rest of the design follows from:
+- **The flow is not in the language.** L0182 describes no screens, steps, ordering, navigation
+  or submission, and there is no player anywhere in this repo. Anything that would reintroduce
+  a survey-taking flow here is the wrong direction; that belongs to a different language or a
+  different client reading this record.
+- **The ideas are injected at code generation.** They are resolved from the survey's `name`
+  against the service that holds the pool — through an **L0170 `fetch`**, which is the generic
+  service-caller — and inlined into the program text. L0182 never touches a network and holds no
+  pool.
+- **The code is the interface.** A person writes the response in the console's editor; an agent
+  writes it through `update_item`. They are the same client, so both produce the identical
+  record and there is nothing to keep in parity. The view only renders it.
 
-- **L0182 declares parameters; it does not own the pool.** Which ideas exist, which ten this
-  participant is shown, and how the ranking is computed all belong to the
-  collective-intelligence service named in `session`. Anything that would move the sampler or
-  the aggregation engine into this repo is the wrong direction.
-- **An activity is a list of items** — L0176's shape, QTI's delivery vocabulary. This layer is
-  deliberately survey-agnostic so L0180 can take it (see "Back-port surface").
+This repo previously held a survey proxy, an in-memory mock backend, an adaptive sampler and a
+five-screen React player. All of it is gone — see "What was deleted, and why it is not coming
+back" before proposing anything that resembles it.
 
 ## Commands
 
@@ -33,16 +37,12 @@ npm test           # core + api + view suites
 npm run lint       # ESLint over the monorepo (npm run lint:fix to write)
 npm run format     # Prettier over the monorepo (printWidth 100, double quotes)
 npm run publish    # core AND view to npm — both are published packages
-npm run gcp:build  # submits cloudbuild.yaml, the path that carries both deploy flags
+npm run gcp:build  # submits cloudbuild.yaml, the path that carries the deploy rules
 npm run gcp:deploy # Cloud Run as l0182, us-central1 — but read "Deploying" first
 npm run gcp:logs   # Cloud Run logs for l0182
 
-npm run -w packages/view dev   # the /form embed app on Vite alone, no API, no auth
+npm run -w packages/view dev   # the renderer on Vite alone; /dev.html is the fixture page
 ```
-
-`gcp:build` and `gcp:deploy` are not two spellings of the same thing. `gcp:build` submits
-`cloudbuild.yaml`, which passes `--update-env-vars` and `--max-instances=1`; `gcp:deploy`
-passes neither and only inherits what the service already has. See "Deploying".
 
 Node 22 (`.nvmrc`, and `engines` refuses lower), npm workspaces.
 
@@ -57,94 +57,85 @@ Run one file, or one case, through that same workspace script for the same reaso
 from the root has the wrong cwd:
 
 ```bash
-npm run -w packages/core test -- src/items.test.ts
-npm run -w packages/core test -- src/items.test.ts -t "sample"
+npm run -w packages/core test -- src/survey.test.ts
+npm run -w packages/core test -- src/survey.test.ts -t "selection"
 ```
 
 Core tests compile through `src/harness.ts` — `compile(src)` and `errorOf(src)`, which run the
-real parser against the real lexicon and append the `..` terminator if it is missing. A new
-test that wires the parser itself is doing by hand what every other test gets from there.
+real parser against the real lexicon and append the `..` terminator if it is missing. A new test
+that wires the parser itself is doing by hand what every other test gets from there.
+
+**`packages/api`'s suite reads the assembled `static/` directory**, so `npm run build` has to
+have run at least once or `app.test.ts` fails on a missing asset rather than on anything real.
 
 ### Environment
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `PORT` | `50182` | The language server's port |
-| `AUTH_URL` | `https://auth.graffiticode.org` | Token verification |
-| `MYSTICWONK_API_URL` | — | The collective-intelligence service the proxy forwards to. **Unset → the built-in mock** |
-| `MYSTICWONK_API_KEY` | — | Its credential. Server-side only; never sent to a client |
+| Variable   | Default                         | Purpose                    |
+| ---------- | ------------------------------- | -------------------------- |
+| `PORT`     | `50182`                         | The language server's port |
+| `AUTH_URL` | `https://auth.graffiticode.org` | Token verification         |
+
+That is the whole environment. There is no service URL and no credential: everything a program
+needs is in the program.
 
 ### Deploying
 
-Two rules hold the deployed service together. All three Cloud Build configs now carry both —
+Two rules hold the deployed service together, and all three Cloud Build configs carry both —
 `cloudbuild.yaml` (what `npm run gcp:build` submits), plus `cloudbuild.production.yaml` and
 `cloudbuild.staging.yaml` (the GitHub triggers described in `GITHUB_DEPLOYMENT.md`). **A new
 deploy path has to carry them too:**
 
-- **`--update-env-vars`, never `--set-env-vars`.** `set` replaces the whole environment, so a
-  `MYSTICWONK_API_URL` added out of band is silently deleted by the next deploy — putting a
-  configured deployment back onto mock data, which is exactly the failure the mock's warning
-  exists to make visible.
-- **`--max-instances=1`**, because the mock holds its pool and its participations in memory and
-  a second instance has its own. Sibling languages run at 20. **Remove the pin once
-  `MYSTICWONK_API_URL` is set** and the real service owns the state.
+- **`--update-env-vars`, never `--set-env-vars`.** `set` replaces the whole environment, so any
+  variable added out of band is silently deleted by the next deploy.
+- **`--max-instances=$_MAX_INSTANCES`, set explicitly and never merely omitted.** Cloud Run
+  carries the service's current scaling forward when the flag is absent, and this service was
+  pinned to `--max-instances=1` for as long as it ran the in-memory mock backend. Nothing holds
+  state between requests now, but _dropping_ the flag would leave that pin of 1 in place
+  indefinitely — which is why the substitution was restored rather than the flag deleted.
+  Default 20, matching the sibling languages.
 
 `npm run gcp:deploy` builds from source and passes neither flag. On an existing service Cloud
 Run carries the current scaling and environment forward, so it is safe for a code-only push and
 cannot be used to change either.
-
-**Both trigger configs originally obeyed neither rule**, and production deploys the same
-`l0182` service: `--set-env-vars=AUTH_URL,NODE_ENV=production` with
-`--max-instances=$_MAX_INSTANCES` (default 100), so one push to `main` would have wiped
-`MYSTICWONK_*` and unpinned the mock in a single build. Both were corrected to match, and
-production's `_MAX_INSTANCES` substitution was **removed rather than defaulted to 1** — a value
-that must be 1 should not be a knob a trigger can raise. Restore it, in all three files, when
-the pin comes out.
 
 ## Architecture
 
 Three workspaces on the published `@graffiticode/l0000` and `@graffiticode/l0000-view`.
 
 - **`packages/core`** (`@graffiticode/l0182`) — the language. `attributes.ts` is the vocabulary
-  as data; `lexicon.ts` and `compiler.ts` both generate from it; `spec/` is what agents read.
-- **`packages/api`** (`@graffiticode/api-l0182`, private) — Express: `POST /compile`,
-  `GET /form`, a health check at `/`, the assembled static assets, **and the survey proxy**.
-  Its middleware order and cache headers are load-bearing — see "What `app.ts` serves".
-- **`packages/view`** (`@graffiticode/l0182-view`) — the survey player.
+  as data; `lexicon.ts` and `compiler.ts` both generate from it; `survey.ts` is the assembly and
+  every rule; `spec/` is what agents read.
+- **`packages/api`** (`@graffiticode/api-l0182`, private) — Express: `POST /compile`, `GET /form`,
+  a health check at `/`, and the assembled static assets. Its middleware order and cache headers
+  are load-bearing — see "What `app.ts` serves".
+- **`packages/view`** (`@graffiticode/l0182-view`) — the renderer.
 
-### Two attribute tables, because there are two levels
+### One attribute table, and no arity-2 words at all
 
 `attributes.ts` holds one row per word, and the lexicon entry, the Checker method and the
 Transformer method are all generated from it — arity included, so a word can never be declared
 with one arity and handled with another. **Never hand-write an attribute handler.**
 
-- `attributeFields` — arity 1, or 0 for a flag. Describes ONE item, inside its attribute list.
-  The default; reach for this.
-- `configFields` — **arity 2, chaining.** Configures the whole activity, sitting outside any
-  attribute list, between the items member list and its closing record.
+Every word is arity 1. Only the two containers (`survey`, `response`) and `PROG` are written out.
 
-Only the containers (`ITEMS` and the six item kinds) and `PROG` are written out.
+The language used to carry a second table of arity-2 chaining words that configured an activity
+from outside its brackets, and that shape had a trap the compiler could never see: a config word
+written as the last word inside an item satisfied its own arity by swallowing the closing
+bracket, so the program died in the parser with "Too few arguments" rather than with anything a
+generator could act on. **Do not reintroduce chaining.** If a word ever needs to sit outside the
+brackets again, reconsider the shape first.
 
 The style is attribute lists, per `console/docs/language-authoring-style.md` — the canonical
 spec for authoring a Graffiticode dialect. Read it before adding vocabulary.
 
-### The five arity-2 words, and the trap they carry
+### `response` nests in the source and is lifted in the output
 
-`title`, `session`, `participants`, `navigation`, `submission` are the entire arity-2 set. Each
-takes its value *and the rest of the chain*, returning the chain's record with its own key
-added — L0166's shape — so the tail of `items [...] title "…" navigation "linear" {}` builds
-the configuration record the member list takes as its second argument.
-
-**A config word written inside an item, as the last word in the brackets, is a parse error the
-compiler never sees**: `select [sample 10 title "T"]` dies with "Too few arguments for TITLE.
-Expected 2." `assertKnownAttributes` has a hint for exactly this case — "`title` configures the
-whole activity, so it goes after the items list" — and it fires only when the word is *not*
-last, because then the arity is satisfied and the value reaches the Transformer.
-
-This is the known cost of the chained form. It is why the set is small, why
-`spec/instructions.md` names all five in their own section, and why
-`activity.test.ts` pins both behaviours rather than only the one with the good message. If the
-set ever needs to grow much, reconsider the shape before adding to it.
+`PROG` takes the program's **last** expression (`compiler.ts`), so a program written as two
+top-level expressions would silently discard the first. That is why `response [...]` is written
+inside `survey`'s attribute list — it evaluates to a single-key record like any attribute, and
+the list merges it — and why `buildSurvey` then lifts it back out to the top level. It is not
+part of the survey; it is an answer to one, and anything reading the output must be able to tell
+them apart.
 
 ### Value validation goes in the Transformer, never the Checker
 
@@ -153,103 +144,63 @@ therefore fires on the first element of a list and nowhere else — in a style b
 almost nowhere. L0166 shipped a Checker rule rejecting negative points that silently did nothing
 for exactly this reason. The generated Checker methods here walk the tree and do not judge.
 
-Note the Checker still needs `checkBoth` for every arity-2 word: `elts[1]` is the rest of the
-chain, and a method walking only `elts[0]` silently drops every error below it.
+### The compiler is the only enforcement there is
+
+This is the load-bearing consequence of deleting the player. Nothing at delivery time can hold a
+response inside the authored bounds, so `survey.ts` checks more than a form-backed language
+would need to: every `selection` id exists in the set, none repeats, the count is within
+`min-choices`/`max-choices`, and `idea` does not repeat something already in the set. Removing
+one of those does not degrade a warning — it makes a meaningless record compile.
 
 ### Error messages are a product surface
 
 The generator is an LLM that reads a compile error and tries again, so the wording is not a
 diagnostic. Every message names the fix:
 
-> select: `max-choices` (9) is more than `sample` (4), so the participant is never shown enough
-> ideas to pick that many. Raise `sample` or lower `max-choices`.
+> survey: `max-choices` (9) is more than the 3 ideas in the set, so there are never enough ideas
+> to pick that many. Add ideas or lower `max-choices`.
 
 The tests assert on that text, not merely that compilation failed. A message that stops naming
 the fix is a regression even when the program still errors.
 
-### Three words break the arity-1 rule, deliberately
+### Ideas keep the service's ids when they have them
 
-`optional`, `show-scores` and `show-participants` are **arity 0**. `contribute [optional prompt
-"…"]` folds to `[{optional: true}, {prompt: "…"}]` and merges; at arity 1 `optional` would
-swallow `{prompt: "…"}` as its argument and silently lose the prompt.
+`ideas` accepts a bare string or a `{id, text}` record. An entry that names its own id keeps it;
+one that does not is numbered positionally, `i0` upward. Both forms exist for one reason: code
+generation inlines whatever the L0170 fetch returned, and when that carried ids they have to
+survive into `selection`, because a selection of positional ids means nothing back at the
+service the set came from.
 
-And `items` is arity 2 — a member list: homogeneous children plus the container's own
-configuration record, written `{}` when empty.
+### `PROG` ignores `options.data`, deliberately
 
-### activity → items, and why there are no sections
+It used to spread it, because the React player wrote the participant's answer back through it on
+every recompile. That forced the compiler to unwrap the `{data, errors}` envelope storage wraps
+a stored model in — **in a loop**, because a second layer was observed appearing after the first
+round trip. That envelope drew blood three times across this codebase: it buried the response
+one level below where the Form read it (a survey that silently would not resume), `l0000-view`
+normalises it in `ne()`, and `graffiticode-mcp-server` rejected every survey as "not a survey"
+for reading `.activity` off it.
 
-`activity.ts` is the layer: it resolves the configuration, numbers the items, and knows nothing
-about surveys. `items.ts` holds the six kinds and every rule specific to them. That split is
-what makes the activity layer a clean copy for L0180.
-
-A **section** exists to carry a rule over a *group* of items — QTI's `selection` (draw 10 of 200
-authored items), an `ordering`, a shared `rubricBlock`. A survey activity has no such group: its
-six items each have their own rules.
-
-**The survey's `sample 10` is not QTI's `selection`, and conflating them is the mistake to
-avoid.** QTI draws N *authored items* from a bank the author wrote. `select` draws N *ideas from
-a live participant-contributed pool* at delivery. One is a section-level construct over
-authored content; the other is data inside one item. Sections earn their keep in L0180, where
-item-bank draw is real. They earn nothing here.
-
-### The item cursor is model state, never derived
-
-`PROG` recompiles on every response. L0180's own record invokes this twice as the reason
-shuffling cannot be computed at compile time — "a random order would reshuffle under the
-candidate on every recompile". A cursor has the same hazard, so it lives in `response.item`,
-advanced by an action.
-
-### Two actions, and the split is the whole player
-
-- **`navigate`** — merges into `response` and does **not** recompile. This is L0182's
-  `LanguageReducer` (`packages/view/src/reduce.ts`), the hook `View` already exposes and which
-  L0179 was previously the only user of. Moving between items is not an answer, and a compile
-  round trip per screen would be both slow and wrong.
-- **`response`** — an actual answer. Recompiles, which is what persists it as an upstream L0000
-  object and what makes it survive a reload.
-
-That distinction *is* `submission "individual"`: one submit per **answered** item, which is what
-the live survey does and what the MCP tool sequence does. Same instrument, same steps, whichever
-client you arrive on.
-
-`navigate` also carries the participation id, so a run resumes from one merge rather than two
-action types.
-
-### PROG spreads `data` first
-
-`resume(e0, { ...data, ...val })` — the fresh compile wins. `data` carries the participant's
-response, but after one round trip it also carries the *previous* compile's `activity`, because
-the View merges each compile result back into the model, and letting that shadow the newly
-compiled one would render a stale activity forever. L0179 spreads the other way on purpose (its
-learner edits live inside the compiled structure); L0181 also spreads data last, which is right
-for its deck and **wrong here**. A response is a separate key the compiler never emits.
-
-**It also unwraps the `{data, errors}` envelope before spreading, and must.** What comes back
-as `options.data` on a round trip is not the model that went in: compiled data is stored as the
-envelope `compile.ts` returns, so spreading it raw buried the response as
-`{data: {response}, errors: []}` — one level below where `Form.tsx` reads `state.data.response`.
-The response was stored correctly and read by nothing, so a survey silently failed to resume,
-which is the one guarantee `submission "individual"` exists to make. Storage has been observed
-adding a second layer after the first round trip, so the unwrap loops. This is the third place
-this envelope has drawn blood — `l0000-view` normalises it in `ne()`, and
-`graffiticode-mcp-server` rejected every survey as "not a survey" for reading `.activity` off
-it — so assume any `data` crossing a storage boundary is wrapped until proven otherwise.
+Nothing writes back now, so the compiled value is the whole model and the envelope cannot reach
+it. `prog.test.ts` pins that: an envelope in `data`, singly and doubly wrapped, must not appear
+in the output. If a data-side response is ever wanted again, it comes back as **one key where
+data wins over the compiled value** — not as a blanket spread, which is what let a stale compile
+shadow a fresh one.
 
 ### What `app.ts` serves, and why the order and the headers are load-bearing
 
-Four rules, three of which are shipped bug fixes. Changing any of them looks harmless locally,
-where there is no CDN and no cross-origin host.
+Four rules, three of which are shipped bug fixes, and all four now pinned by `app.test.ts`.
+Changing any of them looks harmless locally, where there is no CDN and no cross-origin host.
 
 - **Public static is mounted BEFORE auth.** `lexicon.json`, `schema.json`, `spec.html`,
   `instructions.md`, `language-info.json`, `usage-guide.md`, `scope.json` and `template.gc` must
   be fetchable with no token — an agent reads them before it has one. `index: false` keeps
   `GET /` a health check rather than the embed's `index.html`. Note that `routes.auth` is not a
   gate: it attaches `req.auth` and **does not reject an anonymous request**, so mounting after
-  it protects nothing by itself. `/compile` and `/survey` are not token-protected by being
-  below it.
+  it protects nothing by itself.
 - **`/assets/*` is immutable, `/form` must never be held.** The bundle's filenames carry a
   content hash, so a new build is a new name and those may be cached forever. The embed HTML
-  *names* that bundle, so caching it caches the whole deploy: new assets sit there unreferenced
+  _names_ that bundle, so caching it caches the whole deploy: new assets sit there unreferenced
   while every visitor keeps running the previous build — a failure that looks exactly like a
   successful deploy. `no-cache` alone was not enough behind Cloudflare, which served a HIT with
   `age: 1191` and rewrote the header, so `/form` goes out with `Cache-Control`,
@@ -260,164 +211,48 @@ where there is no CDN and no cross-origin host.
   slices from the first `{` and parses. No `lexicon.js` is emitted; drop the alias once the
   console migrates (Stage 3).
 
-## The survey proxy is where the two clients meet
+## The view is a renderer, not a player
 
-`packages/api/src/survey.ts` and `routes/survey.ts`. `POST /survey/open`,
-`POST /survey/answer`, `GET /survey/results`.
+`components/survey/Survey.tsx` is the whole of it, and it is **read-only by design rather than
+by stage**. Adding a control would create a third way to answer that neither of the two real
+clients — the console editor and `update_item` — shares.
 
-The rendered form and the MCP tools call the **same three endpoints**, so "agent vs human is
-transparent" holds at the transport layer rather than by convention: one sampler, one pool, one
-code path. This is also why responses do not go through the console: no console mutation accepts
-a data payload — `startCodeGeneration` is the only write, is LLM-mediated, takes 60–110 s, and
-is annotated `destructiveHint: true`. Routing participants through it would be racy besides.
+It shows the initial state and the current one **side by side**: left is the set as code
+generation inlined it, right is what came back. Ideas carried into `selection` are dimmed on the
+left rather than removed, so the column keeps its shape and what was passed over stays visible.
+The columns stack on a narrow viewport, because this is published as an embed and renders inside
+other people's pages. A survey with no `response` shows the right column explicitly empty and
+captioned — that is the state code generation leaves an item in, and it must read as awaiting a
+response rather than as broken.
 
-The service credential (`MYSTICWONK_API_KEY`) lives here and never reaches a browser or an
-agent. That is the reason the proxy exists rather than the clients calling the service directly.
+`Survey` is exported as `Form` too, because that is the prop name the shared View takes. **No
+`reduce` is passed** — L0182 has no actions of its own, so the `LanguageReducer` hook is unused
+here and L0179 is again its only user.
 
-**`parity.test.ts` is the acceptance test for that claim**, and it is the one most likely to be
-broken by an innocent-looking change and then misread as noise. It drives a human and an agent
-through the same proxy functions the routes call, against a recorded service, and asserts the
-two runs differ in **exactly one field**. If it fails, the two paths diverged: converge them.
-Relaxing the assertion deletes the only check on the property this language exists to have.
+**There is no DOM in the view suite, deliberately.** `vitest.config.ts` pulls in no jsdom, which
+is what keeps a published component's dev tree free of a rendering library. So the logic that
+can be wrong without looking wrong lives in `lib/survey.ts` as pure functions —
+`resolveSelection` and `boundsLabel` — and `lib/survey.test.ts` is what tests it. Do not reach
+for a render test; put the logic in `lib/` and keep the component a projection of it.
+`embed/dev.html` is the way to _look_ at it: it renders every state against fixed models with no
+API behind them, and Vite builds only `index.html`, so it never reaches the embed bundle.
 
-### `scripts/post-response.mjs` is the recompile an agent never does
+**`resolveSelection` names an unresolvable id rather than dropping it.** The compiler refuses
+those, so they only arrive on a record assembled outside it — but silently dropping one would
+render a shorter ranking than the one actually recorded, which is the kind of wrong that looks
+right.
 
-The MCP tools reach the proxy only, so an agent's participation lives in the
-collective-intelligence service and nowhere else. The rendered form additionally reports the
-answer as a `response` action, and *that* recompile is what writes the upstream L0000 object.
-This script is that recompile for a caller with no browser — the composite `code+data` task the
-console's task list nests under its root.
-
-Three things about it are easy to get wrong, and its own header records each one:
-
-- **It takes the item's TASK id, not its item id.** `/compile` decodes the argument as base64 of
-  `{"taskIds":[…]}` and rejects an item id outright. `get_item` returns both; the one wanted
-  here is `task_id`.
-- **The JSON file is the `response` value** — participation, item cursor, answers — not the
-  whole data object. `response` is a separate key the compiler never emits, which is what lets
-  it survive the recompile PROG spreads `data` into.
-- **It reads `GC_AUTH_URL`, `GC_API_URL`, `GC_CONSOLE_URL` and `GC_API_KEY_SECRET`, deliberately
-  not `NEXT_PUBLIC_GC_*`.** Those are the console's dev-time variables and are routinely set to
-  localhost in a working shell; reading them sent a production api key to a local auth service,
-  which answers "invalid api-key" — a message that reads as a bad credential rather than as a
-  request that went to the wrong place.
-
-Auth is two hops because `api.graffiticode.org` verifies Firebase ID tokens, not raw
-Graffiticode API keys: the key is exchanged for a custom token, then signed in.
-
-### The mock backend, and what it is honest about
-
-With no `MYSTICWONK_API_URL`, `survey.ts` falls through to `mock-service.ts` — one file and one
-branch, so removing it later is a two-line change. It exists because the flow was unusable
-without credentials nobody had yet.
-
-The fallback is for **absence, never misconfiguration**: a URL that is set but unreachable still
-errors. And it is loud in three places — a startup warning, `mock: true` on every frame, and a
-"Sample data" badge in the player — because the failure to design against is a real deploy that
-merely *forgot* the variable and then served invented rankings that look exactly like real ones.
-
-Two things it gets right that are easy to get wrong:
-
-- **Sampling needs BOTH properties.** Least-shown-first spreads exposure, which is what lets a
-  pool grow without every participant seeing all of it. But sorting by exposure with a random
-  tie-break gives only that: the seed counts differ by tens, so a 0..1 jitter never reorders
-  anything and every participant draws the identical set. So it takes a *window* of the
-  least-shown and chooses at random within it. The window rotates as exposure accumulates.
-- **Tallies are per actor class**, so `audience` genuinely filters. Without that, the one feature
-  this language exists to demonstrate would be untested.
-
-Scoring is selections over times-shown. The real engine is MCMC over the micro-rankings; this is
-a tally and no amount of tidying makes it that. State is in-memory, so deploy
-`--max-instances 1` while mocked — the pin lives in `cloudbuild.yaml`, see "Deploying".
-
-### The clients pass the item sequence, because the proxy cannot see it
-
-The proxy receives a session, a participation, an actor and an answer — never the compiled
-activity. A backend that does not already know the session therefore cannot bound the cursor or
-size the sample. Both clients hold the activity, so both send `items: [{id, type, sample?}]`; a
-real service knows this from the session and ignores it.
-
-The same gap is why a frame carries a **superset** — `ideas`, `selected` and `results` on every
-frame, with each renderer taking its slice. Teaching the mock the item sequence twice over would
-be the alternative.
-
-`participants` is sent for the same reason and matters more: it is the authored gate, and the
-Form originally omitted it, so a survey restricted to one class enforced that against agents and
-admitted humans. Send it on both open and answer.
-
-The view's half of this is `packages/view/src/lib/service.ts` — the client for the three
-endpoints, and where `Frame`, `Idea`, `RankedIdea` and `ItemRef` are declared. It needs no base
-URL: the proxy is served by the same origin as the `/form` bundle it is loaded from. A new item
-kind that needs its own slice of the frame adds it there, to the superset, not to the item.
-
-### `actor` is derived from the route, never self-asserted
-
-`actorOf` reads `X-Graffiticode-Client` (and `X-Graffiticode-Client-Host`), not the request
-body. A caller able to name its own class could enter a human-only session by claiming to be
-human, and a later human-vs-agent comparison would be quietly wrong with nothing to reveal it.
-`routes/survey.test.ts` asserts a class in the body is ignored.
-
-`assertAccepted` is what makes the authored `participants` list mean anything, and it refuses
-with 403 naming both sides.
-
-### Identity is a participation token, and it is not one-vote-per-person
-
-The MCP `ToolContext` carries a bearer token or a *mutable workspace handle* — never a person —
-and ChatGPT-class hosts mint a fresh MCP session per tool call. Session state cannot carry a
-participant across the four or five calls of one survey. So `open` returns a participation the
-caller passes back on every subsequent call: stateless, resumable, and the same mechanism the
-form holds in `response.participation`.
-
-**This does not enforce uniqueness.** An agent can open a second participation as easily as a
-human can open an incognito window. Enforced uniqueness needs authenticated callers or
-per-invitation tokens, and neither exists — do not assume it does.
-
-## The ideas are not authored
-
-An activity never lists ideas. `sample 10` says *how many* to draw, not which. `rank` carries no
-list either — it orders whatever the preceding `select` gathered, which is why the compiler
-refuses a `rank` without one. Both components read their content off the *frame* the server
-returned, not off the item.
-
-## The view
-
-`Form.tsx` owns navigation and the two actions; `items.tsx` is the registry. Adding a seventh
-kind is one entry there plus a component — `Form` chooses nothing by name.
-
-Each registry entry says how to render the body, what value the item starts from, what answer to
-submit, whether the participant may move on, and what the forward control reads. Nav lives in
-`Form` rather than in the components so every item's Back/Next behaves identically and the
-Skip/Next flip is stated once.
-
-**There is no DOM in the view suite, deliberately.** `vitest.config.ts` pulls in no jsdom, so
-`kinds.test.ts` and `reduce.test.ts` test the registry's state machine and the reducer as pure
-functions — which is what keeps a published component's dev tree free of jsdom and a rendering
-library. Do not reach for a render test when adding a kind; put the logic in the registry entry,
-where it can be tested, and keep the component a projection of it.
-
-- **Every item is fully controlled**, including the textarea — and that is a deliberate
-  divergence from L0180. Its text inputs draft locally and commit on blur because there
-  `respond` writes to the model and every keystroke would recompile. Here the working `value` is
-  local React state owned by `Form`, and only *advancing* sends a `response`, so the deferral
-  bought nothing and cost the Skip/Next flip: the label stayed on "Skip" until the participant
-  clicked away from the box. Copy L0180's pattern only where reporting is expensive.
-- **`RankItem` offers drag *and* up/down buttons, and both are load-bearing.** HTML5 drag events
-  do not fire on touch and there is no keyboard path through them, so for a survey taken by the
-  general public on a phone the buttons are the accessible path, not a fallback.
-- **`move` is a move, not a swap.** Dropping an entry below its old position shifts everything
-  between them; an off-by-one silently mis-orders a ranking without throwing or looking wrong.
-  It is pure and tested for that reason.
-- **`SelectItem` evicts the oldest selection at the ceiling** rather than refusing the click, so
-  the participant gets feedback instead of a dead control.
-
-### Preflight is off, and two rules have to come back
+### Preflight is off, and four rules have to come back
 
 `tailwind.config.js` disables preflight so this published component never injects a global reset
 into a consumer app or the page hosting the `/form` iframe. But preflight is also what sets
 `border-style: solid; border-width: 0` — without it every `border-*` utility renders no border
-at all — and what resets `button`, without which a survey embedded in someone else's site shows
-native chrome buttons mid-card. `src/index.css` restores both, scoped to `.l0182-survey`. The
-Form's root carries that class; a new component tree that wants borders must sit inside it.
+at all — plus `box-sizing`, the list reset and the `button` reset. `src/index.css` restores them,
+scoped to `.l0182-survey`, **every selector wrapped in `:where()`**: that contributes zero
+specificity, so the reset sits under the utilities it is resetting for. Written without it,
+`.l0182-survey button` scores (0,1,1) and beats `.bg-green-700` — which shipped once, rendering
+every filled control as plain text. The component's root carries that class; a new tree that
+wants borders must sit inside it.
 
 ## Spec is tested, not decorative
 
@@ -427,7 +262,7 @@ verbatim into generated programs.
 
 - Every fenced program in `spec.md` and `instructions.md`, plus `template.gc`, **compiles** —
   not merely parses. Programs are recognized by the `..` terminator rather than a list of
-  opening words, because a list goes stale the moment an item kind is added.
+  opening words, because a list goes stale the moment the vocabulary changes.
 - Every documented word exists in the lexicon with the signature claimed, and every L0182 word
   (derived as `lexicon` minus L0000's) is documented. The Functions table is **generated** from
   the lexicon — regenerate it rather than hand-editing.
@@ -445,7 +280,7 @@ verbatim into generated programs.
   tuned. The test asserts several `out_of_scope` sentences carry one, and that L0180 is named.
 
 Prose is still prose. Nothing can check that an `in_scope` line describes a capability
-accurately, so re-read `scope.json` whenever the language gains one.
+accurately, so re-read `scope.json` whenever the language changes.
 
 `spec/usage-guide.md`'s `## Overview` is extracted into `dist/static/language-info.json` as
 `authoring_guide`, and the build **fails** if it is missing or under 100 chars. Edit the
@@ -457,70 +292,71 @@ so `static/instructions.md` legitimately holds prose that appears in no file in 
 editing `spec/instructions.md` changes only the tail. Diff `spec/` against `static/` with that
 in mind.
 
-## Adding an item kind
+## Adding a word
 
-1. Add its words to `attributeFields`, its container to `lexicon.ts`, and the kind to
-   `ITEM_KINDS`.
-2. Add its allowed set to `validAttributes`.
-3. Add a `buildItem` case in `items.ts`, with its defaults and its error messages.
-4. Put it in `ANSWERING_KINDS` or `CONTENT_KINDS` — the six kinds split three and three, by
-   whether the kind captures something from the participant and therefore submits.
-   `validateSequence` refuses an activity holding no answering kind, so a content-only kind
-   added to the wrong list makes such an activity compile.
-5. Extend `validateSequence` if it constrains where it may sit.
-6. Add a renderer and register it in `KINDS` in `packages/view/src/components/form/items.tsx`
-   — not in `Form.tsx`, which chooses nothing by name. Test the registry entry in
-   `kinds.test.ts`; there is no DOM to render into. If it reads something new off the frame,
-   add that to `Frame` in `packages/view/src/lib/service.ts`.
-7. Extend `spec/schema.json`: a `$defs` entry **and** the `oneOf` in `activity.items`.
-8. Document it in `spec/instructions.md` (the container table **and** the generated Functions
+1. Add its row to `attributeFields`. Arity 1; there is no other option.
+2. Add it to the container's list in `validAttributes`.
+3. Handle it in `buildSurvey` or `buildResponse` in `survey.ts`, with its default and its error
+   messages — each naming the fix.
+4. If the renderer needs it, add it to the model types in `packages/view/src/lib/survey.ts` and
+   project it there, not in the component.
+5. Extend `spec/schema.json`.
+6. Document it in `spec/instructions.md` (the container table **and** the generated Functions
    table) and in `spec/spec.md`, each with a compiling example.
-9. Add prompts to `examples.md` as a new numbered category, updating the range and the count.
-10. Extend `supported_item_types` in `spec/language-info.json` and revisit `scope.json`.
+7. Add prompts to `examples.md`, updating the category range and the stated count.
+8. Revisit `spec/language-info.json` and `spec/scope.json`.
+
+## What was deleted, and why it is not coming back here
+
+The repo carried all of this until the flow left the language. It is recorded because the
+obvious next feature request re-proposes one of them:
+
+- **A survey proxy** (`/survey/open|answer|results`) that the form and the MCP tools both called,
+  so a participation was identical whichever client it arrived on. There is one client now — code
+  — so there is nothing to converge, and `parity.test.ts` had nothing left to assert.
+- **An in-memory mock backend** with a 20-idea seed pool, least-shown-first sampling over a
+  rotating window, and per-actor-class tallies. It was the only reason for `--max-instances=1`.
+- **An adaptive sampler**, `sample N`, and the whole "the ideas are not authored, they live in
+  the pool" model. The ideas are authored now — by code generation, not by hand.
+- **A five-screen React player** (`start`/`select`/`rank`/`contribute`/`results`/`thanks`), its
+  `KINDS` registry, drag-and-drop ranking, and the `navigate`/`response` action split.
+- **`participants` and `audience`**, the human-vs-agent gate and the per-population ranking.
+  Both clients are the same client now, so there is no population to separate.
+- **`scripts/post-response.mjs`**, which posted a response as task data. Responses are code.
+
+If a live pool, cross-participant aggregation or an interactive flow is wanted, it is a service
+plus a different client — not a return of these.
 
 ## Back-port surface (for L0180)
 
-The languages are deliberately independent — no shared module, no conformance test between them
-— so **this section is the whole contract**. Keep it accurate.
+**There isn't one any more.** `items`, `navigation`, `submission` and `activity.ts` are deleted
+here. L0180 already holds its copy of them on branch `activity-level` and is unaffected; the two
+languages have diverged and no longer share a shape. Sections and item banks — QTI's `selection`
+and `ordering` over an authored bank — remain L0180's business, and were always the wrong
+construct here.
 
-**Done — L0180 has it** (branch `activity-level`). What moved:
-
-- the words `items` (arity 2), and `navigation`, `submission` (arity 2, chaining)
-- `NAVIGATION_MODES = ["linear","nonlinear"]`, `SUBMISSION_MODES = ["individual","simultaneous"]`
-- the `ITEMS` member-list Transformer, and `activity.ts` entire
-- the emitted shape `{ activity: { navigation, submission, items: [...] } }`
-
-**`title` could not go, and that is the one correction to this contract.** It was listed here at
-arity 2; L0180 already has `title` at arity 1 inside `stimulus`, and the lexicon gives a word
-exactly one arity, so taking it would have broken every stimulus in its corpus. An activity
-there has no name. Anything added to `configFields` here has to be checked against L0180's
-existing vocabulary before it can be called portable.
-
-Two things were deliberately NOT copied, and both are cases where the same word means something
-different: L0180 defaults to `nonlinear`/`simultaneous`, because that is what its renderer
-already does — every item on one screen, nothing submitted in between — and its activity cursor
-is local React state rather than model state, because nothing there is persisted mid-activity.
-
-In L0180 the members are its existing `item [ stimulus [...] parts [...] {} ]`, and they nested
-without change. **Sections belong there, not here** — that is where QTI's `selection` and
-`ordering` over an item bank have work to do.
-
-The activity vocabulary was taken from QTI and Learnosity rather than invented for surveys
-precisely so this copy stays clean. Do not add a survey-shaped word to `activity.ts`.
+`title` is arity 1 again, which also removes the one correction that contract carried: it could
+not be back-ported at arity 2 because L0180 already had `title` at arity 1 inside `stimulus`.
 
 ## Not built yet
 
-Sections and item banks. Conventional questionnaire items — Likert, demographics, satisfaction
-ratings, branching logic. Ranking objects other than a line of text. Any analysis of the
-responses collected. Enforced one-response-per-person.
+Aggregating across responses — a group ranking, a tally, or any live result. Drawing the sample
+(that is the L0170 fetch at code generation, outside this repo). An interactive survey-taking
+flow. Conventional questionnaire items — Likert, demographics, satisfaction ratings, branching
+logic. Ranking objects other than a line of text. Any analysis of the responses collected.
+Enforced one-response-per-person.
 
 ## Related repos
 
 - `l0000` — the base language and the View harness. Both are npm dependencies, not workspaces.
+- `l0170` — the fetch-and-transform dialect that resolves a survey name into its idea set at code
+  generation. The generic service-caller; L0182 consumes its output as inlined `ideas`.
 - `console/docs/language-authoring-style.md` — the style spec this dialect follows.
 - `console/src/lib/languages.ts` — the catalog. **L0182 must be registered here to reach any
-  user**; L0160's absence from that file is why it is invisible today.
-- `graffiticode-mcp-server` — the `open_survey` / `answer_survey` tools, the widget language
-  map, and `describeItem`. Its privacy contract covers survey responses; read it before logging
-  anything from a participation.
-- `l0180` — the assessment dialect this was copied from, and the destination of the back-port.
+  user.** Its `routingHint` still describes the adaptive sample, the shared pool and
+  humans-and-agents-into-one-pool: all false now, and it must be rewritten keeping its `do NOT`
+  and `never` clauses or L0180 starts absorbing survey requests.
+- `graffiticode-mcp-server` — its `open_survey` / `answer_survey` tools target the deleted proxy.
+  The agent path is now plain `create_item` / `update_item`, which is exactly the path a person
+  uses.
+- `l0180` — the assessment dialect this was originally copied from.

@@ -4,64 +4,50 @@
 [![License: CC BY 4.0](https://img.shields.io/badge/Docs-CC%20BY%204.0-lightgrey.svg)](LICENSE-DOCS)
 
 L0182 is a Graffiticode dialect for **collective-intelligence surveys** — group ideation where
-participants both contribute ideas and choose between them. It inherits the base vocabulary of
-[@graffiticode/l0000](https://www.npmjs.com/package/@graffiticode/l0000) and adds survey
-activity authoring on top.
+people both contribute ideas and choose between them. It inherits the base vocabulary of
+[@graffiticode/l0000](https://www.npmjs.com/package/@graffiticode/l0000).
+
+A program is a named set of ideas and, once something has answered, the response to it: the
+ideas chosen in priority order, plus one new idea that was not in the set.
 
 ```
-items [
-  select [
-    prompt "Which of these should we focus on next?"
-    sample 10
-    max-choices 5
+survey [
+  name "you-can-choose"
+  title "You Can Choose"
+  ideas [
+    "protect voting rights"
+    "universal healthcare system"
+    "affordable housing"
   ]
-  rank []
-  contribute [ optional ]
-  results [ show-scores show-participants ]
-] title "Team Priorities" session "abc123" {}..
+  max-choices 2
+  response [
+    selection ["i2" "i0"]
+    idea "ranked-choice voting"
+  ]
+]..
 ```
 
-A participant is shown an adaptive sample of ideas drawn from a shared pool, selects the ones
-they prefer, ranks those selections, may add one idea of their own, and sees the group's live
-ranking. Their micro-ranking joins everyone else's, and an aggregation engine predicts how the
-whole pool would be ranked if everyone had seen all of it.
+## The ideas are not authored
 
-## An activity is a list of items
+They are resolved from the survey's `name` against the service that holds the pool — through an
+L0170 `fetch` — and inlined into the program at code generation. L0182 itself never calls a
+service and holds no pool.
 
-L0182 follows the shape the Graffiticode assessment languages already use and QTI's delivery
-vocabulary: an activity is an ordered list of items, plus the settings that govern how a
-participant moves through them.
+## The code is the interface
 
-| Item | What it does |
-|------|--------------|
-| `start` | Content only. Opens the activity behind a single control. |
-| `select` | Shows a sample of ideas; the participant picks the ones they prefer. |
-| `rank` | The participant orders the ideas they selected. |
-| `contribute` | The participant adds one idea of their own to the pool. |
-| `results` | Content only. The group's current ranking. |
-| `thanks` | Content only. Closes the activity. |
+There is no survey flow here: no screens, no steps, no navigation or submission, and nothing
+that walks anyone through anything. A person writes the response in the console's editor; an AI
+agent writes it through `update_item`. They are the same client, so both produce the identical
+record, and the view only renders it — the set as it was given on one side, what came back on
+the other.
 
-Five settings chain after the items list: `title`, `session`, `participants`, `navigation`
-(QTI's `navigationMode`) and `submission` (QTI's `submissionMode`).
-
-## Two clients, one instrument
-
-The same activity is taken by **people** through the rendered form and by **AI agents** through
-MCP tools, into the same pool and through the same endpoints. Every participation is tagged with
-the class it came from — assigned by the server from the route, never claimed by the caller — so
-the two populations stay separable without being separated:
-
-```
-items [
-  select [sample 10 max-choices 5]
-  results [ audience "human" show-scores ]
-] participants ["human" "agent"] {}..
-```
+If an interactive survey flow is wanted, that is a different language or a different client
+reading this record.
 
 ## What L0182 does not do
 
-It declares parameters. The idea pool, the adaptive sample and the ranking belong to the
-collective-intelligence service named in `session`.
+It records one response. It does not draw the sample, aggregate across respondents, compute a
+group ranking, or analyse anything.
 
 It also has no notion of a right answer: a survey response is never scored. For graded questions
 use [L0180](https://github.com/graffiticode/l0180).
@@ -75,37 +61,26 @@ npm test        # core + api + view
 npm run dev     # API on :50182
 ```
 
-`npm run -w packages/view dev` runs the player alone on Vite for fast renderer work.
+`npm run -w packages/view dev` runs the renderer alone on Vite; `/dev.html` there shows every
+state of it — awaiting a response, answered, an idea with nothing chosen, an unresolvable id —
+against fixed models, with no API behind them.
 
 ## Packages
 
-| Package | Name | Role |
-|---------|------|------|
-| `packages/core` | `@graffiticode/l0182` | The language: lexicon, compiler, spec |
-| `packages/api` | `@graffiticode/api-l0182` | Language server: `/compile`, `/form`, the survey proxy |
-| `packages/view` | `@graffiticode/l0182-view` | The survey player |
+| Package         | Name                       | Role                                                       |
+| --------------- | -------------------------- | ---------------------------------------------------------- |
+| `packages/core` | `@graffiticode/l0182`      | The language: lexicon, compiler, spec                      |
+| `packages/api`  | `@graffiticode/api-l0182`  | Language server: `/compile`, `/form`, public static assets |
+| `packages/view` | `@graffiticode/l0182-view` | The renderer                                               |
 
 ## Environment
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `PORT` | `50182` | The language server's port |
-| `AUTH_URL` | `https://auth.graffiticode.org` | Token verification |
-| `MYSTICWONK_API_URL` | — | The collective-intelligence service the proxy forwards to. **Unset → the built-in mock** |
-| `MYSTICWONK_API_KEY` | — | Its credential. Server-side only; never sent to a client |
+| Variable   | Default                         | Purpose                    |
+| ---------- | ------------------------------- | -------------------------- |
+| `PORT`     | `50182`                         | The language server's port |
+| `AUTH_URL` | `https://auth.graffiticode.org` | Token verification         |
 
-## Running without a service
-
-With no `MYSTICWONK_API_URL`, `/survey/*` is served by a built-in mock, so the whole flow works
-with no credentials. It seeds an idea pool, spreads sampling across it, tallies selections per
-participant class, and accepts contributions — enough to demonstrate the language end to end.
-
-It is loud about being fake: a startup warning, `mock: true` on every response, and a **Sample
-data** badge in the player. A URL that is set but unreachable still fails — the mock stands in
-for absence, never for misconfiguration.
-
-Its state is in-memory, so **deploy with `--max-instances 1` while mocked**: a cold start empties
-the pool and a second instance has its own. Scoring is a tally of selections over times-shown,
-not the real Markov Chain Monte Carlo aggregation.
+There is no service credential and no backend to configure. Everything a program needs is in
+the program.
 
 See [CLAUDE.md](CLAUDE.md) for the design record.

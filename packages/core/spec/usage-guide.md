@@ -1,76 +1,81 @@
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
+
 # Using L0182
 
 ## Overview
 
-L0182 authors a survey activity for collective intelligence. A participant is shown a sample of
-ideas drawn from a shared pool, selects the ones they prefer, ranks those selections, may add
-one idea of their own, and sees the group's current ranking. An activity is an ordered list of
-items — `start`, `select`, `rank`, `contribute`, `results`, `thanks` — each appearing at most
-once, followed by the activity's settings and a closing record.
-
-The ideas are never authored. They belong to the session named in `session`, they are
-contributed by participants, and both the adaptive sample and the ranking are computed by the
-collective-intelligence service at delivery. An activity declares parameters — how many ideas to
-draw, how many may be picked, which population a ranking covers — and nothing else. The same
-activity is taken by people through the rendered form and by AI agents through MCP tools, into
-one pool.
-
-An L0182 program is one **survey activity**: an ordered list of items a participant works
-through, plus the settings that govern how they move between them.
+L0182 is a survey record for collective intelligence. A program is a named set of ideas someone
+is asked to choose between, and — once something has answered — the response to it: the ideas
+chosen in priority order, plus one new idea that was not in the set. The ideas are never
+authored by hand. They are resolved from the survey's `name` against the service that holds the
+pool, through an L0170 `fetch`, and inlined into the program at code generation. L0182 describes
+no flow at all: no screens, no steps, no navigation, no submission, and nothing that draws a
+sample or aggregates across respondents. The code is the interface — a person edits the program
+in the console's editor, an agent edits it through `update_item`, and both produce the identical
+record, which the renderer shows as the set on one side and the response on the other.
 
 ## Getting started
 
-The smallest useful activity shows a sample of ideas and collects a choice:
+The smallest survey is a name and a set to choose from:
 
 ```
-items [ select [sample 10 max-choices 5] ] {}..
+survey [ name "priorities" ideas ["clean air and water" "affordable housing"] ]..
 ```
 
-`sample 10` draws ten ideas from the pool for this participant. It does not say *which* ten —
-the session's adaptive sampler decides, so no two participants necessarily see the same set,
-which is what lets the pool grow without bound.
+That is what code generation produces: a survey awaiting a response. `name` is the argument the
+set was resolved from, and it is what ties any later response back to the survey it answers.
 
-## Building up the flow
+## The ideas
 
-```
-items [
-  start [ prompt "This takes about two minutes." ]
-  select [ prompt "Which of these matter most to you?" sample 10 max-choices 5 ]
-  rank []
-  contribute [ prompt "Add an idea of your own." optional ]
-  results [ show-scores show-participants ]
-  thanks [ prompt "Thanks — come back any time." ]
-] title "Team Priorities" session "abc123" {}..
-```
-
-Each kind appears at most once. `rank` needs a `select` before it, because it orders what that
-item gathered.
-
-## Where the settings go
-
-The five activity settings — `title`, `session`, `participants`, `navigation`, `submission` —
-are written **after** the items list, and the chain ends in `{}`. Putting one inside an item is
-the most common mistake; if it is the last word in the brackets, the program will not even
-parse.
-
-## Who takes part
-
-The same activity is taken by people through the form and by AI agents through MCP tools, into
-one pool. Say which classes you accept, and which population a ranking covers:
+Each entry is a line of text, or a record naming the id the service knows it by. Keep the
+service's ids whenever the fetch returned them — a selection of positional ids means nothing
+back at the service.
 
 ```
-items [
-  select [sample 10 max-choices 5]
-  results [ audience "human" show-scores ]
-] participants ["human" "agent"] {}..
+survey [
+  name "you-can-choose"
+  title "You Can Choose"
+  ideas [
+    {id: "a3" text: "protect voting rights"}
+    {id: "b7" text: "affordable housing"}
+    {id: "c1" text: "mitigate climate change"}
+  ]
+]..
 ```
 
-A participant's class is set by the server from the route they arrived on, so an activity never
-has to ask and a caller can never claim to be something it is not.
+An entry with no id is numbered by position, `i0` upward. A set needs at least two ideas, no two
+may repeat the same text, and no two may share an id.
 
-## What you do not author
+## Answering
 
-The ideas. They belong to the session, they are contributed by participants, and both the
-sample and the ranking are computed by the collective-intelligence service at delivery. An
-activity declares the parameters and nothing else.
+```
+survey [
+  name "priorities"
+  ideas ["clean air and water" "affordable housing" "invest in public transit"]
+  min-choices 1
+  max-choices 2
+  response [
+    selection ["i1" "i0"]
+    idea "make public transit free at the point of use"
+  ]
+]..
+```
+
+`selection` carries idea ids and **the order is the ranking** — first is most important. `idea`
+is one new idea that must not already be in the set; that is what makes it new, and it may stand
+alone with nothing selected.
+
+## Bounds, and why they matter here
+
+`min-choices` defaults to 0 and `max-choices` to the number of ideas. `max-choices` can never
+exceed the size of the set, and a `selection` is checked against both.
+
+Nothing enforces these at delivery, because there is no delivery. The compiler is the only check
+there is, which is why it refuses a response that breaks them rather than clamping it.
+
+## What you do not write
+
+A flow. L0182 has no item list, no ordering, no navigation or submission modes, and no results
+screen — it does not hold a pool, draw a sample, or aggregate anything across respondents. If a
+survey-taking flow is wanted, that is a different language or a different client reading this
+record.

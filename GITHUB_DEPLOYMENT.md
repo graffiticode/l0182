@@ -34,11 +34,13 @@ Cloud Build triggers automatically deploy your code when you push to GitHub.
      - `_AUTH_URL`: `https://auth.graffiticode.org`
      - `_MIN_INSTANCES`: `1`
      - `_MEMORY`: `512Mi`
+     - `_MAX_INSTANCES`: `20`
 
-   There is deliberately no `_MAX_INSTANCES`: while the survey backend is the built-in mock it
-   holds its pool in memory, so `cloudbuild.production.yaml` pins `--max-instances=1` and the
-   value is not a knob a trigger can raise. Remove the pin in that file once
-   `MYSTICWONK_API_URL` is set.
+   `_MAX_INSTANCES` must be passed explicitly rather than left to Cloud Run. The service was
+   pinned to `--max-instances=1` while it ran an in-memory mock survey backend; that backend is
+   gone and nothing holds state between requests any more, but Cloud Run carries the current
+   scaling forward when the flag is absent, so omitting it would leave the old pin of 1 in
+   place. Siblings run at 20.
 
 3. Click "Create"
 
@@ -244,6 +246,7 @@ In `.github/workflows/deploy-gcp.yml`, update the auth step:
 ## Deployment Environments
 
 ### Production (main branch)
+
 - URL: https://l0182-[hash]-uc.a.run.app
 - Full traffic routing
 - Minimum instances: 1
@@ -251,12 +254,14 @@ In `.github/workflows/deploy-gcp.yml`, update the auth step:
 - Memory: 512Mi
 
 ### Staging (develop branch)
+
 - URL: https://l0182-staging-[hash]-uc.a.run.app
 - Full traffic routing
 - Maximum instances: 10
 - Memory: 256Mi
 
 ### Preview (feature branches)
+
 - URL: https://l0182-[branch-name]-[hash]-uc.a.run.app
 - Temporary deployments
 - Auto-cleanup on PR close
@@ -266,20 +271,24 @@ In `.github/workflows/deploy-gcp.yml`, update the auth step:
 ## Monitoring Deployments
 
 ### Cloud Build
+
 - [Build History](https://console.cloud.google.com/cloud-build/builds)
 - [Build Triggers](https://console.cloud.google.com/cloud-build/triggers)
 
 ### GitHub Actions
+
 - Repository → Actions tab
 - Each workflow run shows logs and status
 
 ### Cloud Run
+
 - [Services List](https://console.cloud.google.com/run)
 - Click on service for metrics, logs, and revisions
 
 ## Rollback Strategy
 
 ### Using Cloud Console
+
 1. Go to [Cloud Run](https://console.cloud.google.com/run)
 2. Click on your service
 3. Go to "Revisions" tab
@@ -288,6 +297,7 @@ In `.github/workflows/deploy-gcp.yml`, update the auth step:
 6. Route 100% to previous revision
 
 ### Using CLI
+
 ```bash
 # List revisions
 gcloud run revisions list --service=l0182 --region=us-central1
@@ -301,6 +311,7 @@ gcloud run services update-traffic l0182 \
 ## Troubleshooting
 
 ### Build Fails
+
 1. Check [Cloud Build logs](https://console.cloud.google.com/cloud-build/builds)
 2. Common issues:
    - Missing npm packages
@@ -308,11 +319,13 @@ gcloud run services update-traffic l0182 \
    - Docker build failures
 
 ### Deployment Fails
+
 1. Check service account permissions
 2. Verify environment variables
 3. Check Cloud Run quotas
 
 ### Service Not Accessible
+
 1. Verify `--allow-unauthenticated` flag
 2. Check Cloud Run service URL
 3. Verify port configuration (50182)

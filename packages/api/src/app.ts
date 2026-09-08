@@ -88,15 +88,6 @@ export const createApp = ({ authUrl }: { authUrl?: string } = {}) => {
   // Routes
   app.use("/", routes.root());
   app.use("/compile", routes.compile({ compile }));
-  // The survey proxy: the endpoints the rendered form and the MCP tools both call, so a
-  // participation is identical whichever client it arrived on. Mounted here — after the
-  // public static middleware, with auth — because it carries the service credential.
-  app.use("/survey", routes.survey());
-  // The embed HTML names the hashed bundle it loads, so caching it is caching the whole
-  // deploy. It went out with a one-hour TTL, and a CDN in front of the custom domain held it:
-  // for an hour after every deploy, a host embedding /form kept running the previous build
-  // while the new assets sat there unreferenced. Nothing was broken, and nothing was live
-  // either — a failure that looks exactly like a successful deploy.
   app.get("/form", (_req: Request, res: Response) => {
     // The embed HTML names the content-hashed bundle it loads, so caching it caches the whole
     // deploy: the new assets sit there unreferenced while every visitor keeps running the

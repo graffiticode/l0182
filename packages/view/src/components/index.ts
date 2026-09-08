@@ -1,2 +1,2 @@
 // SPDX-License-Identifier: MIT
-export { Form, KINDS, knownItems } from "./form";
+export { Survey } from "./survey";

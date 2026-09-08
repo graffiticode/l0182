@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MIT
 /**
- * What PROG does with the `data` it is handed back on a round trip.
+ * What PROG does with the `data` it is handed.
  *
- * The shapes below are not hypothetical: they are what `GET /data?id=` returns for a real
- * task after a response has been posted. Compiled data is stored as the `{ data, errors }`
- * envelope the api package emits, so the model that went in is not the shape that comes back.
+ * It ignores it, and that is the point of this file. L0182 used to merge `options.data` into
+ * the compiled value because the React player wrote the participant's answer back through it —
+ * which forced the compiler to unwrap the `{data, errors}` envelope storage wraps a stored
+ * model in, in a loop, because a second layer appeared after the first round trip. The response
+ * is authored in code now. The shapes below are what `GET /data?id=` really returns for a
+ * stored task, and none of them may reach the output.
  */
 import { describe, expect, it } from "vitest";
 import { parser } from "@graffiticode/parser";
 import { compiler, lexicon } from "./index.js";
 
-const SRC = `items [ select [ prompt "P" sample 10 ] rank [] ] title "T" {}..`;
+const SRC = `survey [ name "n" title "T" ideas ["one" "two"] ]..`;
 
 /** Compile with an explicit `data`, the way a round trip does. */
 async function compileWith(data: any): Promise<any> {
@@ -18,49 +21,48 @@ async function compileWith(data: any): Promise<any> {
   return await new Promise((resolve, reject) =>
     compiler.compile(code, data, {}, (e: any, v: any) => {
       const errs = Array.isArray(e) ? e.filter(Boolean) : e ? [e] : [];
-      errs.length ? reject(errs) : resolve(v);
+      if (errs.length) reject(errs);
+      else resolve(v);
     }),
   );
 }
 
-const RESPONSE = { participation: "p-1", item: 2, answers: { "0": { selected: ["i1"] } } };
-
-describe("PROG and the data it gets back", () => {
-  it("keeps a bare response at the top level, where the Form reads it", async () => {
-    const out = await compileWith({ response: RESPONSE });
-    expect(out.response).toEqual(RESPONSE);
-    expect(out.activity.items).toHaveLength(2);
+describe("PROG and the data it is handed", () => {
+  it("emits the compiled value and nothing else", async () => {
+    const out = await compileWith({});
+    expect(Object.keys(out)).toEqual(["survey"]);
+    expect(out.survey.title).toBe("T");
   });
 
-  it("reads the response through the { data, errors } envelope storage returns", async () => {
-    // Without unwrapping this lands as { data: { response }, errors: [] } and Form.tsx's
-    // state.data.response is undefined — a survey that silently will not resume.
-    const out = await compileWith({ data: { response: RESPONSE }, errors: [] });
-    expect(out.response).toEqual(RESPONSE);
-    expect(out.data).toBeUndefined();
-    expect(out.errors).toBeUndefined();
+  it("does not let a stored response in data become the response", async () => {
+    // Whoever answers writes it in code. A response arriving as data is a leftover from the
+    // language's previous shape, and letting it through would resurrect a model nothing writes.
+    const out = await compileWith({ response: { selection: ["i0"] } });
+    expect(out.response).toBeUndefined();
   });
 
-  it("reads it through a doubly wrapped envelope", async () => {
-    // Observed after a second round trip against the same task.
-    const out = await compileWith({ data: { data: { response: RESPONSE }, errors: [] }, errors: [] });
-    expect(out.response).toEqual(RESPONSE);
+  it("does not let a stale compile carried in data shadow the fresh one", async () => {
+    const out = await compileWith({ survey: { title: "STALE", ideas: [] } });
+    expect(out.survey.title).toBe("T");
+    expect(out.survey.ideas).toHaveLength(2);
   });
 
-  it("still lets the fresh activity win over a stale one carried in data", async () => {
-    const out = await compileWith({
-      data: { response: RESPONSE, activity: { title: "STALE", items: [] } },
-      errors: [],
-    });
-    expect(out.activity.title).toBe("T");
-    expect(out.activity.items).toHaveLength(2);
+  it("is untouched by the { data, errors } envelope, singly or doubly wrapped", async () => {
+    for (const d of [
+      { data: { survey: { title: "STALE" } }, errors: [] },
+      { data: { data: { survey: { title: "STALE" } }, errors: [] }, errors: [] },
+    ]) {
+      const out = await compileWith(d);
+      expect(out.survey.title).toBe("T");
+      expect(out.data).toBeUndefined();
+      expect(out.errors).toBeUndefined();
+    }
   });
 
   it("survives data that is absent, empty, or not an object", async () => {
     for (const d of [undefined, {}, null, "nope", []]) {
       const out = await compileWith(d as any);
-      expect(out.activity.items).toHaveLength(2);
-      expect(out.response).toBeUndefined();
+      expect(out.survey.ideas).toHaveLength(2);
     }
   });
 });

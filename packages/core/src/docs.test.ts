@@ -14,7 +14,7 @@ import { readFileSync } from "fs";
 import Ajv from "ajv/dist/2020.js";
 import { parser } from "@graffiticode/parser";
 import { lexicon as base } from "@graffiticode/l0000";
-import { ITEM_KINDS, compiler, lexicon, validAttributes } from "./index.js";
+import { compiler, lexicon, validAttributes } from "./index.js";
 
 /** Files whose fenced blocks are programs. examples.md holds prompts and is checked separately. */
 const SPEC_FILES = ["spec/spec.md", "spec/instructions.md"];
@@ -39,7 +39,7 @@ function blocks(path: string): string[] {
  * A fenced block that is a program, rather than a table row or a JSON sample.
  *
  * Recognized by the terminator, not by a list of opening words: a list of openers goes stale
- * the moment an item kind is added, and a gate that quietly stops covering things is worse
+ * the moment the vocabulary changes, and a gate that quietly stops covering things is worse
  * than no gate. Every L0182 program ends in `..`.
  */
 const isProgram = (src: string): boolean => !!src && src.trim().endsWith("..");
@@ -78,9 +78,9 @@ describe("spec programs", () => {
     }
   });
 
-  test("the starter template compiles and produces an activity", async () => {
+  test("the starter template compiles and produces a survey", async () => {
     const out: any = await compileSrc(readFileSync("spec/template.gc", "utf-8"));
-    expect(out.activity.items.length).toBeGreaterThan(0);
+    expect(out.survey.ideas.length).toBeGreaterThan(1);
   });
 });
 
@@ -145,33 +145,24 @@ describe("schema.json describes what the compiler actually emits", () => {
     }
   });
 
-  test("every item kind validates", async () => {
+  test("a survey with a full response validates", async () => {
     const out: any = await compileSrc(
-      `items [ start [] select [sample 10 max-choices 5] rank [] contribute [optional] results [show-scores show-participants] thanks [] ] title "T" session "s" {}..`,
+      `survey [ name "n" title "T" ideas [{id: "a3" text: "one"} "two" "three"] min-choices 1 max-choices 2
+         response [ selection ["a3" "i2"] idea "a new one" ] ]..`,
     );
-    expect(out.activity.items.map((i: any) => i.type)).toEqual([...ITEM_KINDS]);
-    check(out, "all item kinds");
+    expect(out.response).toEqual({ selection: ["a3", "i2"], idea: "a new one" });
+    check(out, "a full response");
   });
 
-  test("a participant response validates", async () => {
-    const out: any = await compileSrc(`items [ select [sample 10 max-choices 5] rank [] ] {}..`);
-    check(
-      {
-        ...out,
-        response: {
-          participation: "p1",
-          actor: { class: "agent", via: "mcp", host: "claude" },
-          item: 1,
-          answers: { "0": { selected: ["a", "b"] }, "1": { ranked: ["b", "a"] } },
-        },
-      },
-      "response",
-    );
+  test("a survey awaiting a response validates", async () => {
+    const out: any = await compileSrc(`survey [ name "n" ideas ["one" "two"] ]..`);
+    expect(out.response).toBeUndefined();
+    check(out, "no response");
   });
 
   test("rejects output the compiler could not have produced", async () => {
-    const out: any = await compileSrc(`items [ select [sample 10 max-choices 5] ] {}..`);
-    out.activity.items[0].nonsense = true;
+    const out: any = await compileSrc(`survey [ name "n" ideas ["one" "two"] ]..`);
+    out.survey.nonsense = true;
     expect(validate(out), "additionalProperties:false is not doing its job").toBe(false);
   });
 });
@@ -244,14 +235,14 @@ describe("scope.json and language-info.json know which items exist", () => {
     expect(info.id).toBe("0182");
   });
 
-  test("language-info.json's supported_item_types is the item-kind set", () => {
-    expect([...info.supported_item_types].sort()).toEqual([...ITEM_KINDS].sort());
+  test("language-info.json's supported_item_types is the container set", () => {
+    expect([...info.supported_item_types].sort()).toEqual(Object.keys(validAttributes).sort());
   });
 
-  test("every item kind is a container in the lexicon", () => {
-    for (const kind of ITEM_KINDS) {
-      expect(lexicon[kind], `\`${kind}\` is not in the lexicon`).toBeDefined();
-      expect(lexicon[kind].arity).toBe(1);
+  test("every container is in the lexicon at arity 1", () => {
+    for (const container of Object.keys(validAttributes)) {
+      expect(lexicon[container], `\`${container}\` is not in the lexicon`).toBeDefined();
+      expect(lexicon[container].arity).toBe(1);
     }
   });
 
@@ -261,7 +252,9 @@ describe("scope.json and language-info.json know which items exist", () => {
     // the router, and L0180 absorbs survey requests.
     const KEYWORDS = /\b(ONLY when|do NOT|does NOT|are not built|not built yet|EARLY|never)\b/;
     const carrying = scope.out_of_scope.filter((s: string) => KEYWORDS.test(s));
-    expect(carrying.length, "no out_of_scope sentence would reach the MCP router").toBeGreaterThan(2);
+    expect(carrying.length, "no out_of_scope sentence would reach the MCP router").toBeGreaterThan(
+      2,
+    );
   });
 
   test("out_of_scope disclaims assessment, which is the language it would be confused with", () => {

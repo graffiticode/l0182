@@ -1,20 +1,10 @@
 // SPDX-License-Identifier: MIT
 export { Checker, Transformer, compiler } from "./compiler.js";
 export { lexicon } from "./lexicon.js";
-export {
-  attributeFields,
-  configFields,
-  validAttributes,
-  wordOf,
-  ITEM_KINDS,
-  NAVIGATION_MODES,
-  SUBMISSION_MODES,
-  AUDIENCES,
-  PARTICIPANT_CLASSES,
-} from "./attributes.js";
-export type { AttributeMeta, ConfigMeta } from "./attributes.js";
-export { ANSWERING_KINDS, CONTENT_KINDS } from "./items.js";
-export type { ActivityConfig, ActivityItem } from "./activity.js";
+export { attributeFields, validAttributes, wordOf } from "./attributes.js";
+export type { AttributeMeta, Idea } from "./attributes.js";
+export { buildResponse, buildSurvey } from "./survey.js";
+export type { Compiled, Survey, SurveyResponse } from "./survey.js";
 export { Compiler, Renderer, Visitor } from "@graffiticode/l0000";
 export type {
   ASTNode,

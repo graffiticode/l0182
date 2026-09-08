@@ -1,54 +1,47 @@
 {
   "id": "0182",
-  "description": "Collective-intelligence surveys — a participant is shown an adaptive sample of ideas from a shared pool, selects the ones they prefer, ranks them, contributes one of their own, and sees the group's live ranking. Humans take the activity through the rendered form; AI agents take the same activity through MCP tools, into the same pool.",
-  "supported_item_types": [
-    "start",
-    "select",
-    "rank",
-    "contribute",
-    "results",
-    "thanks"
-  ],
+  "description": "Collective-intelligence surveys — a named set of ideas someone is asked to choose between, and the response to it: the ideas chosen in priority order plus one new idea that was not in the set. The set is resolved from the survey's name at code generation; L0182 describes no flow and has no interactive player.",
+  "supported_item_types": ["survey", "response"],
   "example_prompts": [
     {
-      "prompt": "A survey asking people what our team should focus on next quarter. Show each person 10 ideas and let them pick up to 5.",
-      "produces": "select",
-      "notes": "The canonical activity — one select item with sample 10 and max-choices 5."
+      "prompt": "Set up the 'you-can-choose' survey so I can record what I picked.",
+      "produces": "survey",
+      "notes": "The canonical starting point — a name and the set resolved from it, with no response yet."
     },
     {
-      "prompt": "After people pick their favourite ideas, have them drag those into order of importance.",
-      "produces": "rank",
-      "notes": "A rank item orders whatever the select before it gathered; it carries no list of its own."
+      "prompt": "Create a survey from the team-priorities pool, titled 'Team Priorities', where you may pick at most 5.",
+      "produces": "survey",
+      "notes": "`title` and `max-choices` alongside the name. `max-choices` can never exceed the number of ideas."
     },
     {
-      "prompt": "Let people add one idea of their own after they have voted, but let them skip it.",
-      "produces": "contribute",
-      "notes": "`optional` is a bare flag — it takes no value."
+      "prompt": "Build the survey so each idea keeps the id the service gave it.",
+      "produces": "survey",
+      "notes": "Ideas as `{id: \"a3\" text: \"…\"}` records. An entry with no id is numbered by position, i0 upward."
     },
     {
-      "prompt": "Show the top 10 ideas with their scores and how many people have taken part.",
-      "produces": "results",
-      "notes": "limit 10 with show-scores and show-participants, both bare flags."
+      "prompt": "Record that I chose affordable housing, clean air and water, and voting rights, in that order.",
+      "produces": "response",
+      "notes": "`selection` carries idea ids, never text, and the order is the ranking."
     },
     {
-      "prompt": "A complete flow: welcome, choose, rank, contribute, results, thanks.",
-      "produces": "start, select, rank, contribute, results, thanks",
-      "notes": "Each kind may appear once; start opens the activity and thanks closes it."
+      "prompt": "Add my own idea alongside my selection: make public transit free.",
+      "produces": "response",
+      "notes": "`idea` must not repeat one already in the set — that is what makes it new."
     },
     {
-      "prompt": "A survey that both people and AI agents can take, showing everyone the human ranking.",
-      "produces": "select, results",
-      "notes": "participants [\"human\" \"agent\"] on the activity, audience \"human\" on the results item."
+      "prompt": "Record just a new idea — I do not want to pick any of the existing ones.",
+      "produces": "response",
+      "notes": "`idea` may stand alone; `selection` comes back empty."
     },
     {
-      "prompt": "A survey people cannot go back through once they have answered.",
-      "produces": "select",
-      "notes": "navigation \"linear\" — the default, chained after the items list."
+      "prompt": "Require between 2 and 6 choices.",
+      "produces": "survey",
+      "notes": "min-choices 2 max-choices 6. The compiler is the only thing enforcing these — there is no player."
     },
     {
-      "prompt": "Show each participant 12 ideas and let them select exactly 3.",
-      "produces": "select",
-      "notes": "min-choices 3 max-choices 3; max-choices can never exceed sample."
+      "prompt": "Reorder my selection so the housing idea comes first.",
+      "produces": "response",
+      "notes": "Reordering `selection` IS re-ranking; there is no separate rank step."
     }
   ]
 }

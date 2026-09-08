@@ -1,13 +1,13 @@
-items [
-  select [
-    prompt "What should we focus on next?"
-    sample 10
-    max-choices 5
+survey [
+  name "you-can-choose"
+  title "You Can Choose"
+  ideas [
+    "protect voting rights"
+    "universal healthcare system"
+    "affordable housing"
+    "mitigate climate change"
+    "clean air and water"
   ]
-  rank []
-  contribute [
-    prompt "Add an idea of your own."
-    optional
-  ]
-  results [ show-scores show-participants ]
-] title "You Can Choose" {}..
+  min-choices 1
+  max-choices 3
+]..
