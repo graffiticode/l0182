@@ -54,12 +54,13 @@ export const attributeFields: Record<string, AttributeMeta> = {
   MIN_CHOICES: {
     field: "minChoices",
     expects: "number",
-    description: "Fewest ideas a response may select. Defaults to 0.",
+    description: "Fewest ideas a response may select. Defaults to 1.",
   },
   MAX_CHOICES: {
     field: "maxChoices",
     expects: "number",
-    description: "Most ideas a response may select. Defaults to the number of ideas.",
+    description:
+      "Most ideas a response may select. Defaults to 5, or to one fewer than the number of ideas when the set is smaller — a default never permits choosing every idea.",
   },
   SELECTION: {
     field: "selection",

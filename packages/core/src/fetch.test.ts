@@ -106,7 +106,8 @@ describe("fetching a JSON dataset", () => {
       { id: "b7", text: "two" },
     ]);
     const out = await compile(
-      `survey [ name "n" ideas fetch "https://example.org/ideas.json" response [ selection [1 "a3"] ] ]`,
+      `survey [ name "n" ideas fetch "https://example.org/ideas.json" max-choices 2
+         response [ selection [1 "a3"] ] ]`,
     );
     expect(out.response.selection).toEqual(["b7", "a3"]);
   });

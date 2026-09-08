@@ -29,8 +29,8 @@ describe("the survey record", () => {
           { id: "i1", text: "universal healthcare system" },
           { id: "i2", text: "affordable housing" },
         ],
-        minChoices: 0,
-        maxChoices: 3,
+        minChoices: 1,
+        maxChoices: 2,
       },
     });
   });
@@ -110,10 +110,30 @@ describe("the survey record", () => {
 });
 
 describe("the bounds a response must satisfy", () => {
-  it("defaults max-choices to the size of the set", async () => {
+  it("defaults to choosing 1 to 5", async () => {
+    const many = `ideas [ "a" "b" "c" "d" "e" "f" "g" ]`;
+    const out = await compile(survey(many));
+    expect(out.survey.minChoices).toBe(1);
+    expect(out.survey.maxChoices).toBe(5);
+  });
+
+  it("never lets the DEFAULT ceiling reach the whole set", async () => {
+    // Choosing everything is not choosing. The author did nothing wrong either, so this has to
+    // compile rather than fail on a number they never wrote.
     const out = await compile(survey(IDEAS));
-    expect(out.survey.maxChoices).toBe(3);
-    expect(out.survey.minChoices).toBe(0);
+    expect(out.survey.maxChoices).toBe(2);
+    expect((await compile(survey(`ideas ["a" "b"]`))).survey.maxChoices).toBe(1);
+  });
+
+  it("lets an AUTHORED ceiling take the whole set, because that is a claim not a default", async () => {
+    expect((await compile(survey(`${IDEAS} max-choices 3`))).survey.maxChoices).toBe(3);
+  });
+
+  it("still refuses an AUTHORED ceiling larger than the set", async () => {
+    // Writing it is a claim about the survey, and the claim is impossible.
+    expect(await errorOf(survey(`${IDEAS} max-choices 5`))).toContain(
+      "`max-choices` (5) is more than the 3 ideas",
+    );
   });
 
   it("refuses max-choices above the number of ideas, and says which way to fix it", async () => {
@@ -141,7 +161,9 @@ describe("the response", () => {
   });
 
   it("keeps the selection in the order written, because the order is the ranking", async () => {
-    const out = await compile(survey(`${IDEAS} response [ selection ["i2" "i0" "i1"] ]`));
+    const out = await compile(
+      survey(`${IDEAS} max-choices 3 response [ selection ["i2" "i0" "i1"] ]`),
+    );
     expect(out.response.selection).toEqual(["i2", "i0", "i1"]);
   });
 
@@ -152,9 +174,18 @@ describe("the response", () => {
     expect(out.response).toEqual({ selection: ["i0"], idea: "ranked-choice voting" });
   });
 
-  it("allows a contributed idea with nothing selected", async () => {
-    const out = await compile(survey(`${IDEAS} response [ idea "ranked-choice voting" ]`));
+  it("allows a contributed idea with nothing selected, when the floor is lowered", async () => {
+    // `min-choices` defaults to 1, so contributing without choosing is something a survey has
+    // to permit rather than the other way round.
+    const out = await compile(
+      survey(`${IDEAS} min-choices 0 response [ idea "ranked-choice voting" ]`),
+    );
     expect(out.response).toEqual({ selection: [], idea: "ranked-choice voting" });
+  });
+
+  it("refuses a response that chooses nothing under the default floor", async () => {
+    const msg = await errorOf(survey(`${IDEAS} response [ idea "ranked-choice voting" ]`));
+    expect(msg).toContain("`min-choices` is 1");
   });
 
   it("refuses a name that matches nothing, and lists all three ways to name an idea", async () => {
@@ -185,15 +216,17 @@ describe("the response", () => {
   });
 
   it("refuses a new idea that is already in the set, and points at the existing one", async () => {
-    const msg = await errorOf(survey(`${IDEAS} response [ idea "affordable housing" ]`));
+    const msg = await errorOf(
+      survey(`${IDEAS} min-choices 0 response [ idea "affordable housing" ]`),
+    );
     expect(msg).toContain('repeats "affordable housing"');
     expect(msg).toContain("select the existing one instead");
   });
 
   it("catches a repeat that differs only in case", async () => {
-    expect(await errorOf(survey(`${IDEAS} response [ idea "Affordable Housing" ]`))).toContain(
-      "repeats",
-    );
+    expect(
+      await errorOf(survey(`${IDEAS} min-choices 0 response [ idea "Affordable Housing" ]`)),
+    ).toContain("repeats");
   });
 
   it("refuses an empty response", async () => {
@@ -237,7 +270,7 @@ describe("selecting by text", () => {
   it("mixes text with ids and positions in one selection", async () => {
     const out = await compile(
       survey(`ideas [ {id: "a3" text: "one"} {id: "b7" text: "two"} {id: "c1" text: "three"} ]
-        response [ selection ["three" "a3" 1] ]`),
+        max-choices 3 response [ selection ["three" "a3" 1] ]`),
     );
     expect(out.response.selection).toEqual(["c1", "a3", "b7"]);
   });
@@ -320,7 +353,7 @@ describe("selecting by position", () => {
 
   it("resolves a position against a set where only some ideas carry ids", async () => {
     const out = await compile(
-      survey(`ideas [ {id: "a3" text: "one"} "two" ] response [ selection [1 0] ]`),
+      survey(`ideas [ {id: "a3" text: "one"} "two" ] max-choices 2 response [ selection [1 0] ]`),
     );
     expect(out.response.selection).toEqual(["i1", "a3"]);
   });

@@ -98,13 +98,32 @@ function assertIdeas(ideas: Idea[]): void {
   });
 }
 
-/** Resolve and check the bounds a response must satisfy. */
+/** How many ideas a response may name when the survey does not say. */
+const DEFAULT_MIN_CHOICES = 1;
+/** Capped again at one fewer than the set, so a default never permits choosing everything. */
+const DEFAULT_MAX_CHOICES = 5;
+
+/**
+ * Resolve and check the bounds a response must satisfy.
+ *
+ * The default ceiling is five, or one fewer than the set when the set is smaller — so a default
+ * never lets a response name every idea there is. Choosing all of them is not choosing, and a
+ * survey that ends up asking for it by accident has stopped measuring anything.
+ *
+ * The clamp applies to the DEFAULT only. A survey of three ideas that never mentioned
+ * `max-choices` must not fail to compile over a number its author never wrote. Writing
+ * `max-choices 3` over three ideas is a different thing — an explicit claim about this survey,
+ * and the author's to make; only a ceiling larger than the set is refused.
+ */
 function resolveBounds(
   attrs: Record<string, any>,
   ideas: Idea[],
 ): { minChoices: number; maxChoices: number } {
-  const minChoices = attrs.minChoices !== undefined ? attrs.minChoices : 0;
-  const maxChoices = attrs.maxChoices !== undefined ? attrs.maxChoices : ideas.length;
+  const minChoices = attrs.minChoices !== undefined ? attrs.minChoices : DEFAULT_MIN_CHOICES;
+  const maxChoices =
+    attrs.maxChoices !== undefined
+      ? attrs.maxChoices
+      : Math.min(DEFAULT_MAX_CHOICES, ideas.length - 1);
 
   if (!Number.isInteger(minChoices) || minChoices < 0) {
     throw new Error(

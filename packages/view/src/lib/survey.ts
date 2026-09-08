@@ -71,8 +71,8 @@ export function resolveSelection(
  * How the bounds read as a line of prose.
  *
  * Both bounds are always present in compiled output, so this states the range rather than
- * testing which of them was authored — `max-choices` defaults to the size of the set, which is
- * the same as saying there is no ceiling, and saying so is clearer than saying nothing.
+ * testing which of them was authored. The "any of N" case only arises when a survey explicitly
+ * opens the whole set — the defaults (1, and 5 or one fewer than the set) never reach it.
  */
 export function boundsLabel(survey: Survey): string {
   const n = survey.ideas.length;

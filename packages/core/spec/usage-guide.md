@@ -84,8 +84,10 @@ nothing selected.
 
 ## Bounds, and why they matter here
 
-`min-choices` defaults to 0 and `max-choices` to the number of ideas. `max-choices` can never
-exceed the size of the set, and a `selection` is checked against both.
+`min-choices` defaults to 1 and `max-choices` to 5 — or to one fewer than the set when the set is
+smaller, so a default never lets a response name every idea there is. Choosing everything is not
+choosing. An authored `max-choices` may take the whole set; only a ceiling larger than the set is
+refused, and `min-choices` can never exceed `max-choices`.
 
 Nothing enforces these at delivery, because there is no delivery. The compiler is the only check
 there is, which is why it refuses a response that breaks them rather than clamping it.

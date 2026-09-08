@@ -184,7 +184,7 @@ Three smaller rules hold it together:
   lines. Two ideas that normalise to the same key make that key ambiguous, and it is refused by
   name rather than resolved to the first.
 - **0-based positions**, matching the ids the language derives for a set that has none — a
-  position *is* the number in the derived id. The range message says where counting starts,
+  position _is_ the number in the derived id. The range message says where counting starts,
   because an off-by-one records a different ranking rather than failing.
 
 ### `fetch` is L0182's own, and narrower than L0170's on purpose

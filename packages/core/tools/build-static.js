@@ -6,14 +6,7 @@
 // The rest (spec.html, language-info.json, scope.json, schema.json, template.gc,
 // usage-guide.md) are L0182's own.
 import { createRequire } from "module";
-import {
-  mkdirSync,
-  writeFileSync,
-  copyFileSync,
-  readFileSync,
-  existsSync,
-  rmSync,
-} from "fs";
+import { mkdirSync, writeFileSync, copyFileSync, readFileSync, existsSync, rmSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { lexicon } from "../dist/lexicon.js";
@@ -36,10 +29,7 @@ mkdirSync(outDir, { recursive: true });
 
 // 1. lexicon — merged (base + L0182) as plain JSON in lexicon.json. No lexicon.js is written:
 //    the API server aliases the legacy lexicon.js request path to this file (see app.ts).
-writeFileSync(
-  join(outDir, "lexicon.json"),
-  `${JSON.stringify(lexicon, null, 2)}\n`,
-);
+writeFileSync(join(outDir, "lexicon.json"), `${JSON.stringify(lexicon, null, 2)}\n`);
 
 // 2. spec.html via spec-md.
 const specHtml = await Promise.resolve(specMarkdown.html(join(specDir, "spec.md")));
@@ -75,9 +65,7 @@ if (!overviewMatch) {
 }
 const authoringGuide = overviewMatch[1].trim();
 if (authoringGuide.length < 100) {
-  console.error(
-    `build-static: extracted Overview is ${authoringGuide.length} chars (min 100).`,
-  );
+  console.error(`build-static: extracted Overview is ${authoringGuide.length} chars (min 100).`);
   process.exit(1);
 }
 const envelope = JSON.parse(readFileSync(join(specDir, "language-info.json"), "utf-8"));

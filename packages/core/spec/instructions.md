@@ -153,9 +153,12 @@ produces.
 
 ## Selection bounds
 
-`min-choices` defaults to 0 and `max-choices` to the number of ideas. `max-choices` can never
-exceed the size of the set, and `min-choices` can never exceed `max-choices`. A `selection` is
-checked against both.
+`min-choices` defaults to 1 and `max-choices` to 5 — or to one fewer than the set when the set is
+smaller, so a default never lets a response name every idea there is. Choosing everything is not
+choosing. An authored `max-choices` may take the whole set; only a ceiling larger than the set is
+refused, and `min-choices` can never exceed `max-choices`.
+
+A `selection` is checked against both.
 
 ```
 survey [ name "priorities" ideas ["one" "two" "three"] min-choices 1 max-choices 2 ]..
@@ -183,7 +186,7 @@ Every word L0182 adds to the base language. All are arity 1.
 | `name`        | `<string: record>` |   1   | The survey this set of ideas was drawn from. It is what ties a response back to the survey it answers, and it is the argument code generation resolves the idea set from.                          |
 | `title`       | `<string: record>` |   1   | The survey's title, shown above the ideas.                                                                                                                                                         |
 | `ideas`       | `<list: record>`   |   1   | The set of ideas this response is chosen from, written at code generation. Each entry is a line of text, or a record naming the service's own id: ideas ["…" {id: "a3" text: "…"}].                |
-| `min-choices` | `<number: record>` |   1   | Fewest ideas a response may select. Defaults to 0.                                                                                                                                                 |
+| `min-choices` | `<number: record>` |   1   | Fewest ideas a response may select. Defaults to 1.                                                                                                                                                 |
 | `max-choices` | `<number: record>` |   1   | Most ideas a response may select. Defaults to the number of ideas.                                                                                                                                 |
 | `selection`   | `<list: record>`   |   1   | The ideas chosen, in priority order — the order IS the ranking, first is most important. Each entry is an idea's id in quotes, or its position as a whole number counting from 0: selection [2 0]. |
 | `idea`        | `<string: record>` |   1   | One new idea, contributed by whoever answered. It must not repeat an idea already in the set — that is what makes it new.                                                                          |

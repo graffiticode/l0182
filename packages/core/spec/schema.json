@@ -26,12 +26,12 @@
           "items": { "$ref": "#/$defs/idea" }
         },
         "minChoices": {
-          "description": "Fewest ideas a response may select. Enforced by the compiler, which is the only enforcement there is — nothing renders a survey interactively.",
+          "description": "Fewest ideas a response may select. Defaults to 1. Enforced by the compiler, which is the only enforcement there is — nothing renders a survey interactively.",
           "type": "integer",
           "minimum": 0
         },
         "maxChoices": {
-          "description": "Most ideas a response may select. Never more than the number of ideas.",
+          "description": "Most ideas a response may select. Never more than the number of ideas; defaults to 5, or one fewer than the set when the set is smaller, so a default never permits choosing every idea.",
           "type": "integer",
           "minimum": 1
         }

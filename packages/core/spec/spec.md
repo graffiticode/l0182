@@ -102,10 +102,13 @@ survey [
 ]..
 ```
 
-`min-choices` defaults to 0 and `max-choices` to the number of ideas. `max-choices` can never
-exceed the size of the set, and `min-choices` can never exceed `max-choices`. Because there is
-no player, these bounds are enforced only here: the compiler is what refuses a response that
-breaks them.
+`min-choices` defaults to 1 and `max-choices` to 5 — or to one fewer than the set when the set is
+smaller, so a default never lets a response name every idea there is. Choosing everything is not
+choosing. An authored `max-choices` may take the whole set; only a ceiling larger than the set is
+refused, and `min-choices` can never exceed `max-choices`.
+
+Because there is no player, these bounds are enforced only here: the compiler is what refuses a
+response that breaks them.
 
 ## The response
 
