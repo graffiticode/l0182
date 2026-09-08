@@ -1,7 +1,7 @@
 survey [
   name "you-can-choose"
   title "You Can Choose"
-  ideas fetch "https://example.org/surveys/you-can-choose/ideas.json"
+  ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json"
   min-choices 1
   max-choices 3
 ]..

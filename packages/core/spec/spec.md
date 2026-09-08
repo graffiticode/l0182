@@ -64,9 +64,10 @@ Three properties worth knowing:
 A dataset that is neither JSON nor CSV, is empty, or answers with an error is a compile error
 naming the address — never a survey with no ideas in it.
 
-L0182 serves a sample set of twelve civic priorities in both formats, so an example is
-something you can actually run: `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json` and
-`https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv`.
+L0182 publishes several sample sets under `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/` — `ideas.json` and `ideas.csv` (twelve civic
+priorities), plus `ideas-team.csv`, `ideas-city.json`, `ideas-product.json` and
+`ideas-school.csv` — so an example is something you can actually run. They differ in shape on
+purpose: records with ids, bare strings, an id column, a text-only CSV.
 
 ## Writing the ideas out
 

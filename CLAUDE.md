@@ -349,6 +349,16 @@ accurately, so re-read `scope.json` whenever the language changes.
 `authoring_guide`, and the build **fails** if it is missing or under 100 chars. Edit the
 Overview, not the JSON.
 
+**`spec/ideas*.json` and `spec/ideas*.csv` are the sample datasets**, and they are NOT served by
+this language server — `build-static.js` deliberately excludes them, and `app.test.ts` asserts a 404. They are fetched from raw.githubusercontent.com, because a survey's ideas come from
+somewhere else by definition and hosting the sample inside the language would model the opposite.
+They differ in shape on purpose (records with ids, bare strings, an id column, a text-only CSV):
+a corpus of one shape teaches the generator one shape. `docs.test.ts` compiles every one of them
+as a literal set, so a file that stops being a valid set fails the build rather than a prompt.
+
+Note that raw GitHub serves every file as `text/plain`, which is why `fetch` falls back to the
+URL suffix — for `ideas.json` and `ideas.csv` that suffix is the only discriminator.
+
 **Two of the served assets are not the file you edited.** `build-static.js` concatenates
 L0000's `instructions.md` with L0182's, and `lexicon.json` is the merged base + L0182 lexicon,
 so `static/instructions.md` legitimately holds prose that appears in no file in this repo —

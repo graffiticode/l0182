@@ -4,7 +4,7 @@
   "supported_item_types": ["survey", "response"],
   "example_prompts": [
     {
-      "prompt": "Set up the 'you-can-choose' survey from https://example.org/surveys/you-can-choose/ideas.json so I can record what I picked.",
+      "prompt": "Set up the 'you-can-choose' survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json so I can record what I picked.",
       "produces": "survey",
       "notes": "The canonical starting point — `ideas fetch \"<url>\"` reads the set, and there is no response yet."
     },
@@ -14,7 +14,7 @@
       "notes": "`title` and `max-choices` alongside the name. `max-choices` can never exceed the number of ideas."
     },
     {
-      "prompt": "Build the survey from that CSV of ideas, keeping the id column.",
+      "prompt": "Build a survey named team-retro from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv, keeping the id column.",
       "produces": "survey",
       "notes": "`fetch` reads CSV as records keyed by the header row, so an `id,text` file gives ideas with their own ids. An entry with no id is numbered by position, i0 upward."
     },

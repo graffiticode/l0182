@@ -95,11 +95,16 @@ A set needs at least two ideas. No two may repeat the same text, and no two may 
 
 ### A dataset to try
 
-L0182 serves a sample set of twelve civic priorities, in both formats, for examples and for
-getting started:
+L0182 publishes several sample sets, for examples and for getting started. They differ on
+purpose — records with ids, bare strings, an id column, a text-only CSV — because a set can
+arrive in any of those shapes:
 
-- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json`
-- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv`
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json` — twelve civic priorities, with ids
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv` — the same twelve, as CSV
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv` — eight engineering-team retro ideas, with ids
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json` — ten city budget ideas, as plain strings
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json` — nine product feature requests, with ids
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.csv` — seven school improvements, text only
 
 ## The response
 

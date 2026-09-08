@@ -36,8 +36,10 @@ network the language server runs in.
 It reads the dataset once, when the program first compiles, and the set is fixed from then on.
 That is deliberate: a response only means anything against the ideas it was shown.
 
-L0182 serves a sample set of twelve civic priorities in both formats, so the example above is
-one you can run: `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json` and `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv`.
+L0182 publishes several sample sets so the examples are ones you can run — `ideas.json` and
+`ideas.csv` (twelve civic priorities), `ideas-team.csv`, `ideas-city.json`, `ideas-product.json`
+and `ideas-school.csv`, all under `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/`. They differ in shape on purpose: records with ids, bare
+strings, an id column, a text-only CSV.
 
 ## Writing the set out instead
 

@@ -10,7 +10,9 @@
  * packages/core test`), which is what the workspace script does.
  */
 import { test, describe, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
+import { join } from "path";
+import Papa from "papaparse";
 import Ajv from "ajv/dist/2020.js";
 import { parser } from "@graffiticode/parser";
 import { lexicon as base } from "@graffiticode/l0000";
@@ -216,39 +218,69 @@ describe("the container tables match validAttributes", () => {
   });
 });
 
-describe("the sample dataset", () => {
-  // spec/ideas.json and spec/ideas.csv are SERVED (build-static.js copies them), and the
-  // documented examples point `ideas fetch` at them — so an author who copies one gets a
-  // program that compiles against a live address. That only holds while the files are real
-  // ideas and the two formats agree.
-  const json = JSON.parse(readFileSync("spec/ideas.json", "utf-8"));
-  const csv = readFileSync("spec/ideas.csv", "utf-8");
+describe("the sample datasets", () => {
+  // spec/ideas*.json and spec/ideas*.csv are the sets the example prompts point at, served from
+  // raw.githubusercontent.com. A prompt naming one has to be runnable, which holds only while
+  // every file is a set L0182 actually accepts — so each is compiled here as a literal.
+  //
+  // They vary on purpose: records with ids and bare strings, an id column and a text-only CSV,
+  // and a quoted field carrying a comma. That spread is the point; a corpus of one shape teaches
+  // the generator one shape.
+  const files = readdirSync("spec")
+    .filter((f) => /^ideas.*\.(json|csv)$/.test(f))
+    .sort();
 
-  test("ideas.json is a set L0182 accepts", async () => {
-    const literal = json
-      .map((i: any) => `{id: ${JSON.stringify(i.id)} text: ${JSON.stringify(i.text)}}`)
-      .join(" ");
-    const out: any = await compileSrc(`survey [ name "you-can-choose" ideas [ ${literal} ] ]..`);
-    expect(out.survey.ideas).toEqual(json);
-    expect(json.length).toBeGreaterThan(1);
+  const read = (f: string): any[] => {
+    const text = readFileSync(join("spec", f), "utf-8");
+    if (f.endsWith(".json")) return JSON.parse(text);
+    const out = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
+    return out.data as any[];
+  };
+
+  const literal = (entry: any) =>
+    typeof entry === "string"
+      ? JSON.stringify(entry)
+      : `{${Object.entries(entry)
+          .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+          .join(" ")}}`;
+
+  test("there are several, in more than one shape", () => {
+    expect(files.length).toBeGreaterThan(3);
+    const parsed = files.map(read);
+    expect(
+      parsed.some((set) => typeof set[0] === "string"),
+      "no bare-string set",
+    ).toBe(true);
+    expect(
+      parsed.some((set) => typeof set[0] === "object" && set[0].id),
+      "no set with ids",
+    ).toBe(true);
+    expect(
+      parsed.some((set) => typeof set[0] === "object" && !set[0].id),
+      "no text-only CSV",
+    ).toBe(true);
   });
 
-  test("ideas.csv holds the same set, in the same order", () => {
-    const rows = csv.trim().split("\n");
-    expect(rows[0]).toBe("id,text");
-    // Enough CSV to check agreement: a field is quoted only when it contains a comma.
-    const parsed = rows.slice(1).map((row) => {
-      const at = row.indexOf(",");
-      const id = row.slice(0, at);
-      const rest = row.slice(at + 1);
-      const text = rest.startsWith('"') ? rest.slice(1, -1) : rest;
-      return { id, text };
+  for (const f of files) {
+    test(`${f} is a set L0182 accepts`, async () => {
+      const set = read(f);
+      expect(set.length, `${f} has too few ideas`).toBeGreaterThan(1);
+      const out: any = await compileSrc(
+        `survey [ name "sample" ideas [ ${set.map(literal).join(" ")} ] ]..`,
+      );
+      expect(out.survey.ideas).toHaveLength(set.length);
     });
-    expect(parsed).toEqual(json);
+  }
+
+  test("ideas.json and ideas.csv are the same set, in the same order", () => {
+    expect(read("ideas.csv")).toEqual(read("ideas.json"));
   });
 
-  test("the CSV exercises a quoted field, because an idea will contain a comma", () => {
-    expect(csv).toMatch(/,"[^"]*,[^"]*"/);
+  test("a CSV exercises a quoted field, because an idea will contain a comma", () => {
+    const csvs = files.filter((f) => f.endsWith(".csv"));
+    expect(csvs.some((f) => /,"[^"]*,[^"]*"/.test(readFileSync(join("spec", f), "utf-8")))).toBe(
+      true,
+    );
   });
 });
 
