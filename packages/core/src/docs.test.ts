@@ -105,9 +105,29 @@ describe("spec programs", () => {
     }
   });
 
-  test("the starter template compiles and produces a survey", async () => {
+  test("the starter template shows the WHOLE shape, survey and response", async () => {
+    // It is what the generator starts from, so a template that stops at the survey teaches half
+    // the language — and the half it leaves out is the one a client always has to produce.
     const out: any = await compileSrc(readFileSync("spec/template.gc", "utf-8"));
     expect(out.survey.ideas.length).toBeGreaterThan(1);
+    expect(out.response.selection.length).toBeGreaterThan(0);
+    expect(out.response.idea).toBeTruthy();
+  });
+
+  test("the starter template leaves the choice bounds to their defaults", () => {
+    // Pinning them taught the generator to always write them, and the numbers it copied were
+    // not even the defaults.
+    const src = readFileSync("spec/template.gc", "utf-8");
+    expect(src).not.toMatch(/min-choices|max-choices/);
+  });
+
+  test("the starter template names its ideas by text, not by id or position", async () => {
+    // The template fetches its ideas, so the ids do not exist when the response is written.
+    // Copying a positional selection out of here is exactly the mistake that shipped.
+    const src = readFileSync("spec/template.gc", "utf-8");
+    const selection = src.match(/selection \[([^\]]*)\]/)?.[1] ?? "";
+    expect(selection.trim()).toBeTruthy();
+    expect(selection).not.toMatch(/\d/);
   });
 });
 
