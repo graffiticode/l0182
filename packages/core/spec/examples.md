@@ -13,31 +13,31 @@ never asks for them to be made up.
 
 The addresses below are L0182's own sample dataset, the same twelve civic priorities in both
 formats, so these prompts are runnable rather than illustrative:
-`https://l0182.graffiticode.org/ideas.json` and `https://l0182.graffiticode.org/ideas.csv`.
+`https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json` and `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv`.
 
 ## Category 1: Creating a Survey from a Dataset (1–10)
 
-1. Set up the 'you-can-choose' survey from https://l0182.graffiticode.org/ideas.json so I can record what I picked.
-2. Create a survey record called team-priorities that pulls its ideas from https://l0182.graffiticode.org/ideas.json.
-3. I want to answer the neighbourhood-association survey — read its ideas from https://l0182.graffiticode.org/ideas.csv.
-4. Make me a survey named product-feedback and titled 'Product Feedback', reading its ideas from https://l0182.graffiticode.org/ideas.json.
+1. Set up the 'you-can-choose' survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json so I can record what I picked.
+2. Create a survey record called team-priorities that pulls its ideas from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json.
+3. I want to answer the neighbourhood-association survey — read its ideas from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv.
+4. Make me a survey named product-feedback and titled 'Product Feedback', reading its ideas from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json.
 5. Start a survey record for campus-improvements from these ideas: better wifi in the library, longer lab hours, more bike racks, cheaper printing.
-6. Get the ideas for the 'parks-budget' survey from https://l0182.graffiticode.org/ideas.csv so I can choose between them.
+6. Get the ideas for the 'parks-budget' survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv so I can choose between them.
 7. Create the workplace-policies survey titled 'What Would You Change?' from the list I just pasted.
-8. Set up a record for the meeting-overload brainstorm using the ideas at https://l0182.graffiticode.org/ideas.json.
-9. Pull in the 'climate-priorities' survey from https://l0182.graffiticode.org/ideas.json and give it a proper title.
-10. Make a survey record for new-product-name, reading the suggestions from the CSV export at https://l0182.graffiticode.org/ideas.csv.
+8. Set up a record for the meeting-overload brainstorm using the ideas at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json.
+9. Pull in the 'climate-priorities' survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json and give it a proper title.
+10. Make a survey record for new-product-name, reading the suggestions from the CSV export at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv.
 
 ## Category 2: The Dataset and Its Ids (11–18)
 
-11. Build the survey from https://l0182.graffiticode.org/ideas.json so each idea keeps the id the dataset gave it.
-12. The CSV at https://l0182.graffiticode.org/ideas.csv has an id column as well as the text — make sure those ids are preserved.
+11. Build the survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json so each idea keeps the id the dataset gave it.
+12. The CSV at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv has an id column as well as the text — make sure those ids are preserved.
 13. Create a survey from a JSON list of plain strings, with no ids of their own.
 14. Set up the survey with these ten ideas I already have, keeping their service ids.
 15. Add a title above the ideas but leave the ideas themselves as they came back.
 16. The dataset came back without ids — number them by position.
 17. Make a survey with a mix: some ideas carry ids, some are plain text.
-18. Set up the survey record from https://l0182.graffiticode.org/ideas.csv and give it a short title for the group.
+18. Set up the survey record from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv and give it a short title for the group.
 
 ## Category 3: Bounds on a Response (19–26)
 

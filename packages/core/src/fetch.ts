@@ -111,6 +111,10 @@ function parseCsv(text: string): any {
  * if the first fails. Note that CSV parsing almost never throws — a JSON endpoint that answers
  * 200 with an HTML error page parses "successfully" as a one-column table — so JSON is preferred
  * unless something actually says CSV.
+ *
+ * The suffix half is not a nicety. raw.githubusercontent.com — where the documented sample
+ * dataset lives — serves EVERY file as `text/plain`, so for those two addresses the extension is
+ * the only thing that distinguishes them.
  */
 export async function fetchDataset(raw: string): Promise<any> {
   const url = assertFetchable(raw);

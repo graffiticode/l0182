@@ -47,7 +47,7 @@ program compiles:
 survey [
   name "you-can-choose"
   title "You Can Choose"
-  ideas fetch "https://l0182.graffiticode.org/ideas.json"
+  ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json"
 ]..
 ```
 
@@ -98,8 +98,8 @@ A set needs at least two ideas. No two may repeat the same text, and no two may 
 L0182 serves a sample set of twelve civic priorities, in both formats, for examples and for
 getting started:
 
-- `https://l0182.graffiticode.org/ideas.json`
-- `https://l0182.graffiticode.org/ideas.csv`
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json`
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv`
 
 ## The response
 
@@ -183,7 +183,7 @@ Every word L0182 adds to the base language. All are arity 1.
 survey [
   name "you-can-choose"
   title "You Can Choose"
-  ideas fetch "https://l0182.graffiticode.org/ideas.json"
+  ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json"
   min-choices 1
   max-choices 5
   response [

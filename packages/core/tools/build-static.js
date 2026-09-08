@@ -4,7 +4,7 @@
 //     (the legacy lexicon.js request path is aliased to it by the API server.)
 //   - instructions.md: parent (L0000) instructions concatenated with L0182's.
 // The rest (spec.html, language-info.json, scope.json, schema.json, template.gc,
-// usage-guide.md, ideas.json, ideas.csv) are L0182's own.
+// usage-guide.md) are L0182's own.
 import { createRequire } from "module";
 import {
   mkdirSync,
@@ -26,6 +26,12 @@ const pkgDir = join(__dirname, "..");
 const specDir = join(pkgDir, "spec");
 const outDir = join(pkgDir, "dist", "static");
 
+// Wipe and repopulate, exactly as `npm run assemble` does for packages/api/static: a stale file
+// cannot survive, which is the point. Without this, an asset that stops being emitted lingers in
+// dist/static and `assemble` faithfully copies it forward — which is how `ideas.json` kept being
+// served after it moved to raw.githubusercontent.com, and why the line below used to delete a
+// stale `lexicon.js` by name.
+rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 
 // 1. lexicon — merged (base + L0182) as plain JSON in lexicon.json. No lexicon.js is written:
@@ -34,8 +40,6 @@ writeFileSync(
   join(outDir, "lexicon.json"),
   `${JSON.stringify(lexicon, null, 2)}\n`,
 );
-// Remove any stale lexicon.js left by an earlier build — the asset is JSON-only now.
-rmSync(join(outDir, "lexicon.js"), { force: true });
 
 // 2. spec.html via spec-md.
 const specHtml = await Promise.resolve(specMarkdown.html(join(specDir, "spec.md")));
@@ -52,11 +56,12 @@ writeFileSync(join(outDir, "instructions.md"), `${parentInstructions}\n\n${ownIn
 
 // 4. Copy L0182's own verbatim spec assets.
 //
-// ideas.json and ideas.csv are the sample dataset. They are SERVED, not merely shipped: the
-// documented examples point `ideas fetch` at them, so publishing them here is what makes those
-// examples true — an author can copy one and it compiles against a live address. Both hold the
-// same twelve ideas, and docs.test.ts asserts they agree.
-for (const f of ["usage-guide.md", "scope.json", "schema.json", "template.gc", "ideas.json", "ideas.csv"]) {
+// `spec/ideas.json` and `spec/ideas.csv` are deliberately NOT among them. They are the sample
+// dataset the documented examples fetch, and they are served from raw.githubusercontent.com
+// instead — a survey's ideas come from somewhere else by definition, and serving the sample
+// from the language server would have modelled the opposite. They stay in `spec/` because the
+// repo is where they are authored and docs.test.ts checks them.
+for (const f of ["usage-guide.md", "scope.json", "schema.json", "template.gc"]) {
   const src = join(specDir, f);
   if (existsSync(src)) copyFileSync(src, join(outDir, f));
 }

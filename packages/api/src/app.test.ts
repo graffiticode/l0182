@@ -35,11 +35,6 @@ describe("public assets are readable with no token", () => {
     "scope.json",
     "template.gc",
     "spec.html",
-    // The sample dataset the documented examples fetch. It must be readable with no token for
-    // the same reason as the rest — `fetch` sends no credentials — and it is the one asset a
-    // compile actually reads back over the network.
-    "ideas.json",
-    "ideas.csv",
   ];
 
   for (const file of PUBLIC) {
@@ -58,6 +53,15 @@ describe("public assets are readable with no token", () => {
     const res = await request(app).get("/lexicon.js");
     expect(res.status).toBe(200);
     expect(JSON.parse(res.text).survey).toBeDefined();
+  });
+
+  it("does not serve the sample idea dataset", async () => {
+    // spec/ideas.json and spec/ideas.csv are the set the documented examples fetch, and they
+    // are served from raw.githubusercontent.com. A survey's ideas come from somewhere else by
+    // definition; serving the sample here would model the opposite.
+    for (const f of ["ideas.json", "ideas.csv"]) {
+      expect((await request(app).get(`/${f}`)).status, f).toBe(404);
+    }
   });
 
   it("keeps GET / a health check rather than the embed's index.html", async () => {

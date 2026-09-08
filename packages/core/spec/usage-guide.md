@@ -20,7 +20,7 @@ record, which the renderer shows as the set on one side and the response on the 
 The smallest survey is a name and somewhere to read the ideas from:
 
 ```
-survey [ name "priorities" ideas fetch "https://l0182.graffiticode.org/ideas.json" ]..
+survey [ name "priorities" ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json" ]..
 ```
 
 That is a survey awaiting a response. `name` says which survey this is and ties any later
@@ -37,7 +37,7 @@ It reads the dataset once, when the program first compiles, and the set is fixed
 That is deliberate: a response only means anything against the ideas it was shown.
 
 L0182 serves a sample set of twelve civic priorities in both formats, so the example above is
-one you can run: `https://l0182.graffiticode.org/ideas.json` and `https://l0182.graffiticode.org/ideas.csv`.
+one you can run: `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json` and `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv`.
 
 ## Writing the set out instead
 

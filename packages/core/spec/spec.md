@@ -13,7 +13,7 @@ An L0182 program is one survey and at most one response to it.
 ```
 survey [
   name "you-can-choose"
-  ideas fetch "https://l0182.graffiticode.org/ideas.json"
+  ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json"
 ]..
 ```
 
@@ -65,8 +65,8 @@ A dataset that is neither JSON nor CSV, is empty, or answers with an error is a 
 naming the address — never a survey with no ideas in it.
 
 L0182 serves a sample set of twelve civic priorities in both formats, so an example is
-something you can actually run: `https://l0182.graffiticode.org/ideas.json` and
-`https://l0182.graffiticode.org/ideas.csv`.
+something you can actually run: `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json` and
+`https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv`.
 
 ## Writing the ideas out
 

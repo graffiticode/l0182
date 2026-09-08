@@ -123,6 +123,31 @@ describe("fetching a CSV dataset", () => {
   });
 });
 
+describe("a host that types everything text/plain", () => {
+  // raw.githubusercontent.com does exactly this, and it is where the documented sample dataset
+  // lives — so the suffix fallback is not a nicety here, it is the whole discriminator. Both
+  // cases below would be indistinguishable without it.
+  it("reads a .csv address as CSV", async () => {
+    serve("id,text\na3,one\nb7,two\n", { type: "text/plain; charset=utf-8" });
+    const out = await compile(SRC("https://raw.githubusercontent.com/o/r/main/ideas.csv"));
+    expect(out.survey.ideas).toEqual([
+      { id: "a3", text: "one" },
+      { id: "b7", text: "two" },
+    ]);
+  });
+
+  it("reads a .json address as JSON", async () => {
+    serve('[{"id":"a3","text":"one"},{"id":"b7","text":"two"}]', {
+      type: "text/plain; charset=utf-8",
+    });
+    const out = await compile(SRC("https://raw.githubusercontent.com/o/r/main/ideas.json"));
+    expect(out.survey.ideas).toEqual([
+      { id: "a3", text: "one" },
+      { id: "b7", text: "two" },
+    ]);
+  });
+});
+
 describe("when the dataset is not a set of ideas", () => {
   it("reports it as `ideas`, which is the word the author has to fix", async () => {
     serve({ ideas: ["one", "two"] });
