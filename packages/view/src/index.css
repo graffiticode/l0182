@@ -66,4 +66,49 @@
     color: inherit;
     margin: 0;
   }
+
+  /*
+   * 5. The font. Preflight is what normally sets `font-family` on `html`, so with it off the
+   *    component inherited whatever the host page had — and the /form iframe is its own
+   *    document with no host stylesheet at all, which meant the browser default: Times. A
+   *    survey rendered in a serif nobody chose.
+   *
+   *    Set on the root and left to inherit rather than repeated per element, and `:where()` as
+   *    ever, so a `font-*` utility still wins. The stack is Tailwind's own `font-sans`, kept
+   *    verbatim so a `font-sans` utility resolves to exactly what the root already had.
+   */
+  :where(.l0182-survey) {
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      "Noto Sans",
+      sans-serif,
+      "Apple Color Emoji",
+      "Segoe UI Emoji",
+      "Segoe UI Symbol",
+      "Noto Color Emoji";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /*
+   * 6. Heading and paragraph margins. Preflight zeroes these too. Every column here spaces
+   *    itself with flex `gap-*`, so the browser's default `0.67em` on an `h1` and `1em` on a
+   *    `p` are added ON TOP of the gap that was already the whole spacing plan — the title sat
+   *    low, and each caption pushed its list down by a line it was never given.
+   */
+  :where(.l0182-survey) h1,
+  :where(.l0182-survey) h2,
+  :where(.l0182-survey) h3,
+  :where(.l0182-survey) p {
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+  }
 }

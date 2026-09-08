@@ -88,7 +88,9 @@ export const Survey = ({ state }: FormProps) => {
                         text={idea.text}
                         accent
                         badge={
-                          <span className="text-sm font-semibold text-green-700">{i + 1}</span>
+                          <span className="text-sm font-semibold tabular-nums text-green-700">
+                            {i + 1}
+                          </span>
                         }
                       />
                     </li>

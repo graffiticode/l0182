@@ -66,7 +66,7 @@ export const attributeFields: Record<string, AttributeMeta> = {
     field: "selection",
     expects: "refs",
     description:
-      "The ideas chosen, in priority order — the order IS the ranking, first is most important. Name each one by its exact text: selection [\"clean air and water\" \"affordable housing\"]. An id in quotes works too, and a bare whole number is a position counting from 0 — but reach for those only when you can see the set, because a wrong position records the wrong idea and still compiles.",
+      'The ideas chosen, in priority order — the order IS the ranking, first is most important. Name each one by its exact text: selection ["clean air and water" "affordable housing"]. An id in quotes works too, and a bare whole number is a position counting from 0 — but reach for those only when you can see the set, because a wrong position records the wrong idea and still compiles.',
   },
   IDEA: {
     field: "idea",
