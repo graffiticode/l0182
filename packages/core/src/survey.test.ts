@@ -163,6 +163,11 @@ describe("the response", () => {
     expect(msg).toContain("The ids are: i0, i1, i2");
   });
 
+  it("offers positions in that message when the set has no ids of its own", async () => {
+    const msg = await errorOf(survey(`${IDEAS} response [ selection ["i9"] ]`));
+    expect(msg).toContain("name an idea by its position, counting from 0");
+  });
+
   it("refuses the same id twice", async () => {
     const msg = await errorOf(survey(`${IDEAS} response [ selection ["i0" "i0"] ]`));
     expect(msg).toContain('names "i0" twice');
@@ -201,6 +206,76 @@ describe("the response", () => {
   it("refuses an empty new idea rather than storing a blank one", async () => {
     const msg = await errorOf(survey(`${IDEAS} response [ selection ["i0"] idea "  " ]`));
     expect(msg).toContain("`idea` is empty");
+  });
+});
+
+describe("selecting by position", () => {
+  // The language derives `i0`, `i1`, … for a set that carried no ids, so making the author write
+  // "i2" to mean the third idea is ceremony over a number it invented itself. Positions are
+  // 0-based for exactly that reason — they ARE the number in the derived id.
+  it("resolves positions to the ids the set was given", async () => {
+    const out = await compile(survey(`${IDEAS} response [ selection [2 0] ]`));
+    expect(out.response.selection).toEqual(["i2", "i0"]);
+  });
+
+  it("keeps the compiled record on ids, so the input form changes nothing downstream", async () => {
+    const byPosition = await compile(survey(`${IDEAS} response [ selection [2 0] ]`));
+    const byId = await compile(survey(`${IDEAS} response [ selection ["i2" "i0"] ]`));
+    expect(byPosition).toEqual(byId);
+  });
+
+  it("accepts position 0, which is the first idea and not a missing one", async () => {
+    const out = await compile(survey(`${IDEAS} response [ selection [0] ]`));
+    expect(out.response.selection).toEqual(["i0"]);
+  });
+
+  it("allows the two notations side by side", async () => {
+    const out = await compile(survey(`${IDEAS} response [ selection [2 "i1"] ]`));
+    expect(out.response.selection).toEqual(["i2", "i1"]);
+  });
+
+  it("catches the same idea named once by id and once by position", async () => {
+    const msg = await errorOf(survey(`${IDEAS} response [ selection ["i0" 0] ]`));
+    expect(msg).toContain('names "i0" twice');
+  });
+
+  it("refuses a position past the end, and says where counting starts", async () => {
+    const msg = await errorOf(survey(`${IDEAS} response [ selection [3] ]`));
+    expect(msg).toContain("the position 3, but this survey has 3 ideas");
+    expect(msg).toContain("Positions count from 0, so the last one is 2");
+  });
+
+  it("refuses a negative position", async () => {
+    expect(await errorOf(survey(`${IDEAS} response [ selection [-1] ]`))).toContain("the position -1");
+  });
+
+  it("refuses a position when the set carries its own ids, and names them", async () => {
+    // The id is what the originating service understands, so a positional selection could not be
+    // handed back to it. Better to refuse than to resolve into something that means nothing there.
+    const msg = await errorOf(
+      survey(`ideas [ {id: "a3" text: "one"} {id: "b7" text: "two"} ] response [ selection [1] ]`),
+    );
+    expect(msg).toContain("carry ids of their own");
+    expect(msg).toContain("the ids are: a3, b7");
+  });
+
+  it("refuses positions when only SOME ideas carry ids, because the set is then ambiguous", async () => {
+    const msg = await errorOf(
+      survey(`ideas [ {id: "a3" text: "one"} "two" ] response [ selection [1] ]`),
+    );
+    expect(msg).toContain("carry ids of their own");
+  });
+
+  it("refuses a fractional position", async () => {
+    const msg = await errorOf(survey(`${IDEAS} response [ selection [1.5] ]`));
+    expect(msg).toContain("must be an idea's id");
+    expect(msg).toContain("its position as a whole number");
+  });
+
+  it("refuses an entry that is neither an id nor a position", async () => {
+    expect(await errorOf(survey(`${IDEAS} response [ selection [true] ]`))).toContain(
+      "entry 1 is true",
+    );
   });
 });
 

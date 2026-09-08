@@ -24,7 +24,7 @@ export interface AttributeMeta {
   /** The key this word emits. Kebab-case word -> camelCase field where they differ. */
   field: string;
   /** Type asserted before the value is used. Checked in the Transformer, never the Checker — see below. */
-  expects?: "string" | "number" | "strings" | "ideas";
+  expects?: "string" | "number" | "refs" | "ideas";
   /** One line, shown in the generated spec. */
   description: string;
 }
@@ -63,9 +63,9 @@ export const attributeFields: Record<string, AttributeMeta> = {
   },
   SELECTION: {
     field: "selection",
-    expects: "strings",
+    expects: "refs",
     description:
-      "The ids of the ideas chosen, in priority order — the order IS the ranking, first is most important.",
+      'The ideas chosen, in priority order — the order IS the ranking, first is most important. Each entry is an idea\'s id, or, when the set carries no ids of its own, its position counting from 0: selection [2 0].',
   },
   IDEA: {
     field: "idea",
@@ -77,7 +77,7 @@ export const attributeFields: Record<string, AttributeMeta> = {
 
 /** The signature string the generated spec renders, derived so it cannot drift from the row. */
 export const typeOf = (meta: AttributeMeta): string =>
-  meta.expects === "strings" || meta.expects === "ideas"
+  meta.expects === "refs" || meta.expects === "ideas"
     ? "<list: record>"
     : `<${meta.expects || "any"}: record>`;
 
@@ -192,13 +192,23 @@ export function checkValue(name: string, meta: AttributeMeta, raw: any): string 
     }
     return null;
   }
-  if (meta.expects === "strings") {
+  if (meta.expects === "refs") {
+    // A reference to an idea: its id, or its position. Positions exist because a set fetched
+    // without ids of its own gets them by position anyway, and making the author write "i2" to
+    // mean the third idea is ceremony over a number the language derived itself. Which of the
+    // two forms is legal for a given survey is decided in `survey.ts`, where the ideas are in
+    // hand; here we only reject an entry that is neither.
     if (!Array.isArray(raw) || !raw.length) {
-      return `${word}: expected a list of strings, e.g. ${word} ["i0" "i2"].`;
+      return `${word}: expected a list of ideas, by id or by position, e.g. ${word} ["i0" "i2"] or ${word} [0 2].`;
     }
-    const bad = raw.findIndex((s) => typeof s !== "string" || !s.trim());
+    const bad = raw.findIndex(
+      (v) => !((typeof v === "string" && v.trim()) || (typeof v === "number" && Number.isInteger(v))),
+    );
     if (bad >= 0) {
-      return `${word}: entry ${bad + 1} is ${showValue(raw[bad])}; every entry must be a non-empty string.`;
+      return (
+        `${word}: entry ${bad + 1} is ${showValue(raw[bad])}; every entry must be an idea's id ` +
+        "in \"quotes\", or its position as a whole number."
+      );
     }
     return null;
   }

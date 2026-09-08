@@ -50,7 +50,7 @@ generation, so a prompt names the survey, not its contents.
 
 27. Record that I chose affordable housing, clean air and water, and voting rights, in that order.
 28. My top choice is the healthcare idea, then climate, then transit.
-29. Save my selection: the third idea first, then the first one.
+29. Save my selection by position: the third idea first, then the first one.
 30. I picked these five ideas — put them in the order I listed them.
 31. Record my answer with just one idea chosen.
 32. Reorder my selection so the housing idea comes first.

@@ -26,6 +26,18 @@ export interface SurveyResponse {
   idea?: string;
 }
 
+/**
+ * A response as written, before it is checked against the set it answers.
+ *
+ * `selection` may name each idea by its id OR by its position, and the two are resolved to ids
+ * by `resolveResponse` — the compiled record only ever carries ids, so the input sugar costs
+ * nothing downstream and both clients still emit the identical shape.
+ */
+export interface AuthoredResponse {
+  selection: Array<string | number>;
+  idea?: string;
+}
+
 export interface Survey {
   name: string;
   title?: string;
@@ -53,6 +65,19 @@ function normaliseIdeas(raw: any[]): Idea[] {
     typeof entry === "string"
       ? { id: `i${i}`, text: entry.trim() }
       : { id: typeof entry.id === "string" ? entry.id : `i${i}`, text: String(entry.text).trim() },
+  );
+}
+
+/**
+ * Did the author's set carry ids of its own?
+ *
+ * This is what decides whether a `selection` may name ideas by position. When the fetch returned
+ * ids, a position is ambiguous in the way that matters: the id is the thing the originating
+ * service understands, and a selection written positionally could not be handed back to it.
+ */
+function hasAuthoredIds(raw: any[]): boolean {
+  return raw.some(
+    (entry) => entry !== null && typeof entry === "object" && typeof entry.id === "string" && entry.id.trim(),
   );
 }
 
@@ -120,30 +145,76 @@ function resolveBounds(
 }
 
 /**
- * Check a response against the set it answers.
+ * Resolve one `selection` entry to an idea id.
  *
- * Every id must name an idea that is actually in the set: a selection is a claim about what was
- * chosen, and one naming an idea nobody was offered is not a wrong answer but a meaningless one.
+ * A position is 0-based, matching the ids the language derives for a set that has none (`i0`
+ * upward). Both messages say so outright, because an off-by-one here does not fail — it records
+ * a different ranking than the one that was meant, which is the kind of wrong that looks right.
  */
-function assertResponse(response: SurveyResponse, survey: Survey): void {
-  const { selection, idea } = response;
-  const byId = new Map(survey.ideas.map((i) => [i.id, i]));
-
-  const seen = new Set<string>();
-  selection.forEach((id, i) => {
-    if (!byId.has(id)) {
+function resolveRef(
+  ref: string | number,
+  at: number,
+  survey: Survey,
+  authoredIds: boolean,
+): string {
+  if (typeof ref === "number") {
+    if (authoredIds) {
       throw new Error(
-        `response: \`selection\` entry ${i + 1} is ${JSON.stringify(id)}, which is not an idea in ` +
-          `this survey. The ids are: ${survey.ideas.map((x) => x.id).join(", ")}.`,
+        `response: \`selection\` entry ${at + 1} is the position ${ref}, but this survey's ideas ` +
+          "carry ids of their own, so a position does not identify one unambiguously. Name the id " +
+          `instead — the ids are: ${survey.ideas.map((x) => x.id).join(", ")}.`,
       );
     }
+    if (ref < 0 || ref >= survey.ideas.length) {
+      throw new Error(
+        `response: \`selection\` entry ${at + 1} is the position ${ref}, but this survey has ` +
+          `${survey.ideas.length} ideas. Positions count from 0, so the last one is ` +
+          `${survey.ideas.length - 1}.`,
+      );
+    }
+    return survey.ideas[ref].id;
+  }
+
+  if (!survey.ideas.some((x) => x.id === ref)) {
+    throw new Error(
+      `response: \`selection\` entry ${at + 1} is ${JSON.stringify(ref)}, which is not an idea in ` +
+        `this survey. The ids are: ${survey.ideas.map((x) => x.id).join(", ")}.` +
+        (authoredIds
+          ? ""
+          : " This set has no ids of its own, so you can also name an idea by its position, counting from 0."),
+    );
+  }
+  return ref;
+}
+
+/**
+ * Check a response against the set it answers, and resolve it to ids.
+ *
+ * Every entry must name an idea that is actually in the set: a selection is a claim about what
+ * was chosen, and one naming an idea nobody was offered is not a wrong answer but a meaningless
+ * one.
+ */
+function resolveResponse(
+  authored: AuthoredResponse,
+  survey: Survey,
+  authoredIds: boolean,
+): SurveyResponse {
+  const { idea } = authored;
+  const selection: string[] = [];
+  const seen = new Set<string>();
+
+  authored.selection.forEach((ref, i) => {
+    const id = resolveRef(ref, i, survey, authoredIds);
     if (seen.has(id)) {
+      // Reported by id rather than as written, because `selection ["i0" 0]` names the same idea
+      // twice in two notations and saying so is the whole point of the message.
       throw new Error(
         `response: \`selection\` names ${JSON.stringify(id)} twice. An idea holds one place in the ` +
           "order, so each id may appear once.",
       );
     }
     seen.add(id);
+    selection.push(id);
   });
 
   if (selection.length < survey.minChoices) {
@@ -168,17 +239,19 @@ function assertResponse(response: SurveyResponse, survey: Survey): void {
       );
     }
   }
+
+  return { selection, ...(idea !== undefined ? { idea } : {}) };
 }
 
 /** Assemble a response from its attribute list. Checked against the survey by `buildSurvey`. */
-export function buildResponse(raw: any): SurveyResponse {
+export function buildResponse(raw: any): AuthoredResponse {
   const attrs = mergeAttributes(raw, "response");
   assertKnownAttributes("response", attrs);
 
   if (attrs.selection === undefined && attrs.idea === undefined) {
     throw new Error(
       "response: is empty. A response is the ideas chosen and, optionally, a new one — " +
-        'e.g. response [selection ["i2" "i0"] idea "…"].',
+        'e.g. response [selection [2 0] idea "…"].',
     );
   }
 
@@ -190,7 +263,7 @@ export function buildResponse(raw: any): SurveyResponse {
   }
 
   return {
-    selection: attrs.selection !== undefined ? (attrs.selection as string[]) : [],
+    selection: attrs.selection !== undefined ? (attrs.selection as Array<string | number>) : [],
     ...(idea !== undefined ? { idea } : {}),
   };
 }
@@ -221,6 +294,7 @@ export function buildSurvey(raw: any): Compiled {
     );
   }
 
+  const authoredIds = hasAuthoredIds(attrs.ideas as any[]);
   const ideas = normaliseIdeas(attrs.ideas as any[]);
   assertIdeas(ideas);
   const { minChoices, maxChoices } = resolveBounds(attrs, ideas);
@@ -235,7 +309,8 @@ export function buildSurvey(raw: any): Compiled {
 
   if (attrs.response === undefined) return { survey };
 
-  const response = attrs.response as SurveyResponse;
-  assertResponse(response, survey);
-  return { survey, response };
+  return {
+    survey,
+    response: resolveResponse(attrs.response as AuthoredResponse, survey, authoredIds),
+  };
 }
