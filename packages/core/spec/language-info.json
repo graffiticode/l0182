@@ -1,12 +1,12 @@
 {
   "id": "0182",
-  "description": "Collective-intelligence surveys — a named set of ideas someone is asked to choose between, and the response to it: the ideas chosen in priority order plus one new idea that was not in the set. The set is resolved from the survey's name at code generation; L0182 describes no flow and has no interactive player.",
+  "description": "Collective-intelligence surveys — a named set of ideas someone is asked to choose between, and the response to it: the ideas chosen in priority order plus one new idea that was not in the set. The set is read from a JSON or CSV dataset by `ideas fetch \"<url>\"` when the program compiles; L0182 describes no flow and has no interactive player.",
   "supported_item_types": ["survey", "response"],
   "example_prompts": [
     {
-      "prompt": "Set up the 'you-can-choose' survey so I can record what I picked.",
+      "prompt": "Set up the 'you-can-choose' survey from https://example.org/surveys/you-can-choose/ideas.json so I can record what I picked.",
       "produces": "survey",
-      "notes": "The canonical starting point — a name and the set resolved from it, with no response yet."
+      "notes": "The canonical starting point — `ideas fetch \"<url>\"` reads the set, and there is no response yet."
     },
     {
       "prompt": "Create a survey from the team-priorities pool, titled 'Team Priorities', where you may pick at most 5.",
@@ -14,9 +14,9 @@
       "notes": "`title` and `max-choices` alongside the name. `max-choices` can never exceed the number of ideas."
     },
     {
-      "prompt": "Build the survey so each idea keeps the id the service gave it.",
+      "prompt": "Build the survey from that CSV of ideas, keeping the id column.",
       "produces": "survey",
-      "notes": "Ideas as `{id: \"a3\" text: \"…\"}` records. An entry with no id is numbered by position, i0 upward."
+      "notes": "`fetch` reads CSV as records keyed by the header row, so an `id,text` file gives ideas with their own ids. An entry with no id is numbered by position, i0 upward."
     },
     {
       "prompt": "Record that I chose affordable housing, clean air and water, and voting rights, in that order.",

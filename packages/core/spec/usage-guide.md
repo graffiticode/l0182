@@ -6,9 +6,9 @@
 
 L0182 is a survey record for collective intelligence. A program is a named set of ideas someone
 is asked to choose between, and — once something has answered — the response to it: the ideas
-chosen in priority order, plus one new idea that was not in the set. The ideas are never
-authored by hand. They are resolved from the survey's `name` against the service that holds the
-pool, through an L0170 `fetch`, and inlined into the program at code generation. L0182 describes
+chosen in priority order, plus one new idea that was not in the set. The ideas are never authored
+by hand: `ideas fetch "<url>"` reads them from the dataset that holds them — JSON, or CSV keyed
+by its header row — when the program compiles, and the set is fixed from then on. L0182 describes
 no flow at all: no screens, no steps, no navigation, no submission, and nothing that draws a
 sample or aggregates across respondents. The code is the interface — a person edits the program
 in the console's editor, an agent edits it through `update_item`, and both produce the identical
@@ -16,20 +16,29 @@ record, which the renderer shows as the set on one side and the response on the 
 
 ## Getting started
 
-The smallest survey is a name and a set to choose from:
+The smallest survey is a name and somewhere to read the ideas from:
 
 ```
-survey [ name "priorities" ideas ["clean air and water" "affordable housing"] ]..
+survey [ name "priorities" ideas fetch "https://example.org/surveys/priorities/ideas.json" ]..
 ```
 
-That is what code generation produces: a survey awaiting a response. `name` is the argument the
-set was resolved from, and it is what ties any later response back to the survey it answers.
+That is a survey awaiting a response. `name` says which survey this is and ties any later
+response back to it; `fetch` reads the set.
 
-## The ideas
+## Where the set comes from
 
-Each entry is a line of text, or a record naming the id the service knows it by. Keep the
-service's ids whenever the fetch returned them — a selection of positional ids means nothing
-back at the service.
+`fetch` reads JSON or CSV. A CSV's header row names the fields, so `id,text` and the equivalent
+JSON give the same set; unused columns are ignored, and an id that looks like a number stays a
+string. The address must be public — no credentials are sent — and cannot point inside the
+network the language server runs in.
+
+It reads the dataset once, when the program first compiles, and the set is fixed from then on.
+That is deliberate: a response only means anything against the ideas it was shown.
+
+## Writing the set out instead
+
+For ideas already in hand, write them literally. Each entry is a line of text, or a record naming
+the id the service knows it by — keep those ids whenever the dataset carried them.
 
 ```
 survey [

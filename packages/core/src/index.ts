@@ -3,6 +3,7 @@ export { Checker, Transformer, compiler } from "./compiler.js";
 export { lexicon } from "./lexicon.js";
 export { attributeFields, validAttributes, wordOf } from "./attributes.js";
 export type { AttributeMeta, Idea } from "./attributes.js";
+export { fetchDataset, setFetcher } from "./fetch.js";
 export { buildResponse, buildSurvey } from "./survey.js";
 export type { AuthoredResponse, Compiled, Survey, SurveyResponse } from "./survey.js";
 export { Compiler, Renderer, Visitor } from "@graffiticode/l0000";

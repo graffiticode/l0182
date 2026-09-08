@@ -14,14 +14,10 @@ ideas chosen in priority order, plus one new idea that was not in the set.
 survey [
   name "you-can-choose"
   title "You Can Choose"
-  ideas [
-    "protect voting rights"
-    "universal healthcare system"
-    "affordable housing"
-  ]
+  ideas fetch "https://example.org/surveys/you-can-choose/ideas.json"
   max-choices 2
   response [
-    selection ["i2" "i0"]
+    selection [2 0]
     idea "ranked-choice voting"
   ]
 ]..
@@ -29,9 +25,15 @@ survey [
 
 ## The ideas are not authored
 
-They are resolved from the survey's `name` against the service that holds the pool — through an
-L0170 `fetch` — and inlined into the program at code generation. L0182 itself never calls a
-service and holds no pool.
+`fetch` reads them from the dataset that holds them — JSON, or CSV keyed by its header row — when
+the program compiles. Compiled results are stored against a content-addressed task id, so a
+program reads its dataset **once** and the set is fixed from then on: a response only means
+anything against the ideas it was shown.
+
+The address must be public; no credentials are sent, and one written into a URL would be stored
+in the program. L0182 holds no pool, samples nothing, and never re-reads a set it has compiled.
+
+An idea is named in a `selection` by its id, or by its position counting from 0.
 
 ## The code is the interface
 

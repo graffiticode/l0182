@@ -246,7 +246,9 @@ describe("selecting by position", () => {
   });
 
   it("refuses a negative position", async () => {
-    expect(await errorOf(survey(`${IDEAS} response [ selection [-1] ]`))).toContain("the position -1");
+    expect(await errorOf(survey(`${IDEAS} response [ selection [-1] ]`))).toContain(
+      "the position -1",
+    );
   });
 
   it("resolves a position against a set that carries the service's own ids", async () => {
@@ -267,8 +269,12 @@ describe("selecting by position", () => {
     // The one case where the two could collide: ids that look like numbers. A string is always an
     // id and a number is always a position, so `["1"]` and `[1]` name different ideas here.
     const set = `ideas [ {id: "1" text: "one"} {id: "2" text: "two"} ]`;
-    expect((await compile(survey(`${set} response [ selection ["1"] ]`))).response.selection).toEqual(["1"]);
-    expect((await compile(survey(`${set} response [ selection [1] ]`))).response.selection).toEqual(["2"]);
+    expect(
+      (await compile(survey(`${set} response [ selection ["1"] ]`))).response.selection,
+    ).toEqual(["1"]);
+    expect((await compile(survey(`${set} response [ selection [1] ]`))).response.selection).toEqual(
+      ["2"],
+    );
   });
 
   it("refuses a fractional position", async () => {

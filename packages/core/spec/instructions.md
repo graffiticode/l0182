@@ -35,11 +35,44 @@ trailing record.
 | a scalar                    | the value itself — `max-choices 5`, `title "…"`                     |
 | a list                      | the list itself — `ideas ["…" "…"]`, `selection ["i2" "i0"]`        |
 
-## The ideas are written at code generation
+## The ideas come from the dataset, not from you
 
-**Never invent the ideas.** They are resolved from the survey's `name` against the service that
-holds the pool — through an L0170 `fetch` — and the set that comes back is inlined into the
-program. An entry is a line of text, or a record naming the id the service knows it by:
+**Never invent the ideas.** They belong to the survey the program names. Point `ideas` at the
+dataset that holds them and `fetch` reads it when the program compiles:
+
+```
+survey [
+  name "you-can-choose"
+  title "You Can Choose"
+  ideas fetch "https://example.org/surveys/you-can-choose/ideas.json"
+]..
+```
+
+`fetch` reads **JSON or CSV**. Either way the dataset is a list of ideas, and an idea is a line
+of text or a record carrying the id the service knows it by:
+
+```json
+[
+  { "id": "a3", "text": "protect voting rights" },
+  { "id": "b7", "text": "affordable housing" }
+]
+```
+
+```
+id,text
+a3,protect voting rights
+b7,"affordable housing, and enough of it"
+```
+
+A CSV's header row names the fields, so `id,text` gives the same set as the JSON above. Columns
+the language has no use for are ignored. The address must be public — `fetch` sends no
+credentials — and it may not point inside the network the language server runs in.
+
+The fetch happens **once**, when the program first compiles, and the set is then fixed: a
+response only means anything against the ideas it was shown.
+
+A set may also be written out in full, which is what to do when the ideas are already in hand
+rather than behind an address:
 
 ```
 survey [
@@ -51,8 +84,8 @@ survey [
 ]..
 ```
 
-Keep the service's ids whenever the fetch returned them — a selection of positional ids means
-nothing back at the service. An entry with no id is numbered by position, `i0` upward.
+Keep the service's ids whenever the dataset carried them. An entry with no id is numbered by
+position, `i0` upward.
 
 A set needs at least two ideas. No two may repeat the same text, and no two may share an id.
 
@@ -119,17 +152,18 @@ beside what came back.
 
 Every word L0182 adds to the base language. All are arity 1.
 
-| Word          | Signature          | Arity | Meaning                                                                                                                                                                             |
-| :------------ | :----------------- | :---: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`        | `<string: record>` |   1   | The survey this set of ideas was drawn from. It is what ties a response back to the survey it answers, and it is the argument code generation resolves the idea set from.           |
-| `title`       | `<string: record>` |   1   | The survey's title, shown above the ideas.                                                                                                                                          |
-| `ideas`       | `<list: record>`   |   1   | The set of ideas this response is chosen from, written at code generation. Each entry is a line of text, or a record naming the service's own id: ideas ["…" {id: "a3" text: "…"}]. |
-| `min-choices` | `<number: record>` |   1   | Fewest ideas a response may select. Defaults to 0.                                                                                                                                  |
-| `max-choices` | `<number: record>` |   1   | Most ideas a response may select. Defaults to the number of ideas.                                                                                                                  |
+| Word          | Signature          | Arity | Meaning                                                                                                                                                                                            |
+| :------------ | :----------------- | :---: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | `<string: record>` |   1   | The survey this set of ideas was drawn from. It is what ties a response back to the survey it answers, and it is the argument code generation resolves the idea set from.                          |
+| `title`       | `<string: record>` |   1   | The survey's title, shown above the ideas.                                                                                                                                                         |
+| `ideas`       | `<list: record>`   |   1   | The set of ideas this response is chosen from, written at code generation. Each entry is a line of text, or a record naming the service's own id: ideas ["…" {id: "a3" text: "…"}].                |
+| `min-choices` | `<number: record>` |   1   | Fewest ideas a response may select. Defaults to 0.                                                                                                                                                 |
+| `max-choices` | `<number: record>` |   1   | Most ideas a response may select. Defaults to the number of ideas.                                                                                                                                 |
 | `selection`   | `<list: record>`   |   1   | The ideas chosen, in priority order — the order IS the ranking, first is most important. Each entry is an idea's id in quotes, or its position as a whole number counting from 0: selection [2 0]. |
-| `idea`        | `<string: record>` |   1   | One new idea, contributed by whoever answered. It must not repeat an idea already in the set — that is what makes it new.                                                           |
-| `survey`      | `<list: record>`   |   1   | A named set of ideas to choose from, and optionally the response to it.                                                                                                             |
-| `response`    | `<list: record>`   |   1   | The ideas chosen, in priority order, and optionally one new idea that was not in the set.                                                                                           |
+| `idea`        | `<string: record>` |   1   | One new idea, contributed by whoever answered. It must not repeat an idea already in the set — that is what makes it new.                                                                          |
+| `survey`      | `<list: record>`   |   1   | A named set of ideas to choose from, and optionally the response to it.                                                                                                                            |
+| `response`    | `<list: record>`   |   1   | The ideas chosen, in priority order, and optionally one new idea that was not in the set.                                                                                                          |
+| `fetch`       | `<string: any>`    |   1   | Reads a dataset over HTTP at compile time and evaluates to it: JSON, or CSV as a list of records keyed by its header row. This is how `ideas` gets its set.                                        |
 
 ## A full example
 
@@ -137,22 +171,11 @@ Every word L0182 adds to the base language. All are arity 1.
 survey [
   name "you-can-choose"
   title "You Can Choose"
-  ideas [
-    {id: "a3" text: "protect voting rights"}
-    {id: "b7" text: "universal healthcare system"}
-    {id: "c1" text: "protect public lands and waters from being sold off"}
-    {id: "d9" text: "affordable housing"}
-    {id: "e4" text: "remove profit from healthcare"}
-    {id: "f2" text: "end Citizens United"}
-    {id: "g8" text: "mitigate climate change"}
-    {id: "h5" text: "clean air and water"}
-    {id: "j7" text: "lower prescription drug prices"}
-    {id: "k1" text: "strengthen public schools"}
-  ]
+  ideas fetch "https://example.org/surveys/you-can-choose/ideas.json"
   min-choices 1
   max-choices 5
   response [
-    selection ["d9" "a3" "h5"]
+    selection [2 0]
     idea "make public transit free at the point of use"
   ]
 ]..

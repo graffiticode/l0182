@@ -14,7 +14,32 @@ import { readFileSync } from "fs";
 import Ajv from "ajv/dist/2020.js";
 import { parser } from "@graffiticode/parser";
 import { lexicon as base } from "@graffiticode/l0000";
-import { compiler, lexicon, validAttributes } from "./index.js";
+import { compiler, lexicon, setFetcher, validAttributes } from "./index.js";
+
+// Documented programs use the real `fetch` form, because that is what an author writes and what
+// the generator learns from. Serving them from a stub is what keeps this gate a test of our
+// parser and our prose rather than of a third party's uptime.
+setFetcher(
+  async () =>
+    ({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      text: async () =>
+        JSON.stringify([
+          { id: "a3", text: "protect voting rights" },
+          { id: "b7", text: "universal healthcare system" },
+          { id: "c1", text: "protect public lands and waters from being sold off" },
+          { id: "d9", text: "affordable housing" },
+          { id: "e4", text: "remove profit from healthcare" },
+          { id: "f2", text: "end Citizens United" },
+          { id: "g8", text: "mitigate climate change" },
+          { id: "h5", text: "clean air and water" },
+          { id: "j7", text: "lower prescription drug prices" },
+          { id: "k1", text: "strengthen public schools" },
+        ]),
+    }) as any,
+);
 
 /** Files whose fenced blocks are programs. examples.md holds prompts and is checked separately. */
 const SPEC_FILES = ["spec/spec.md", "spec/instructions.md"];

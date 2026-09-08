@@ -15,10 +15,9 @@ Three commitments the rest of the design follows from:
   or submission, and there is no player anywhere in this repo. Anything that would reintroduce
   a survey-taking flow here is the wrong direction; that belongs to a different language or a
   different client reading this record.
-- **The ideas are injected at code generation.** They are resolved from the survey's `name`
-  against the service that holds the pool — through an **L0170 `fetch`**, which is the generic
-  service-caller — and inlined into the program text. L0182 never touches a network and holds no
-  pool.
+- **The ideas come from a dataset, read by the program itself.** `ideas fetch "<url>"` reads JSON
+  or CSV at compile time. L0182 holds no pool, samples nothing, and re-reads nothing once a
+  program has compiled.
 - **The code is the interface.** A person writes the response in the console's editor; an agent
   writes it through `update_item`. They are the same client, so both produce the identical
   record and there is nothing to keep in parity. The view only renders it.
@@ -177,9 +176,48 @@ Two things about the rule are load-bearing:
   positions stay legal for a set carrying the service's own ids — nothing is ambiguous, and an
   author reading ten ideas should not have to copy an opaque id to point at the third.
 - **0-based, not 1-based**, because the language already derives `i0`, `i1`, … by position for a
-  set that has none — a position *is* the number in the derived id, and making the two disagree
+  set that has none — a position _is_ the number in the derived id, and making the two disagree
   would be gratuitous. The range message says where counting starts, because an off-by-one here
   does not fail: it records a different ranking than the one that was meant.
+
+### `fetch` is L0182's own, and narrower than L0170's on purpose
+
+`src/fetch.ts`. It exists because the console's composition pipeline does not fit: `ideas data use
+"0170"` binds through `options.data`, and a dedicated word evaluating to a value touches neither
+that channel nor the planner. It also means no console change is needed for a survey to get its
+ideas — which matters, because **the console has no mechanism for resolving a name into data and
+inlining it at generation time**; composition there is exclusively a live `data use` binding
+producing a `+`-joined task id.
+
+Modelled on `l0170/packages/api/src/compiler.js:215`, and deliberately different in four ways.
+Each is a hole in the original, so do not "simplify" toward it:
+
+- **A timeout** (`AbortSignal.timeout`). L0170 passes no options to `bent`, so a server that
+  accepts the connection and dribbles the body holds a compile open indefinitely.
+- **A scheme and host check.** L0170 hands `String(v0).trim()` straight to the client and its
+  Checker validates nothing, so an authored program can make the language server GET
+  `http://169.254.169.254/…` — the cloud metadata endpoint, which issues service-account tokens —
+  and read the result back through the compiled output. Loopback and link-local are refused here.
+- **`dynamicTyping` off on CSV.** It would turn an `id` column of "1", "2" into numbers, and an
+  idea's id is a string — which is exactly what tells `selection ["1"]` (an id) from
+  `selection [1]` (a position) apart.
+- **JSON is tried first unless something actually says CSV.** `Papa.parse` almost never throws, so
+  a JSON endpoint answering 200 with an HTML sign-in page parses "successfully" into a one-column
+  table. Preferring CSV would turn that failure into a plausible-looking survey.
+
+Two properties follow from the platform rather than from this file:
+
+- **The fetch happens once, ever.** A task id is content-addressed over code+data, so the API
+  serves a stored compile rather than calling the language again
+  (`graffiticode/packages/api/src/data.js:8-11`) — no TTL, no invalidation. A program freezes its
+  set at first compile, which is what a survey wants: a response only means anything against the
+  ideas it was shown.
+- **It cannot authenticate**, and that is not a casual fix. A credential would have to go in the
+  URL, and the URL lives in the task AST, the compile cache and the editor.
+
+**`setFetcher` is the test seam**, mirroring `setSchemaFetcher` in the base language. `docs.test.ts`
+installs a stub, which is what lets the documented programs use a real-looking address without the
+documentation gate depending on a third party's uptime.
 
 ### Ideas keep the service's ids when they have them
 
@@ -312,7 +350,9 @@ in mind.
 
 ## Adding a word
 
-1. Add its row to `attributeFields`. Arity 1; there is no other option.
+1. Add its row to `attributeFields`. Arity 1; there is no other option. (A word that evaluates to
+   a value rather than a keyed record — `fetch` is the only one — is hand-written in `lexicon.ts`
+   and `compiler.ts` instead.)
 2. Add it to the container's list in `validAttributes`.
 3. Handle it in `buildSurvey` or `buildResponse` in `survey.ts`, with its default and its error
    messages — each naming the fix.
@@ -358,22 +398,23 @@ not be back-ported at arity 2 because L0180 already had `title` at arity 1 insid
 
 ## Not built yet
 
-Aggregating across responses — a group ranking, a tally, or any live result. Drawing the sample
-(that is the L0170 fetch at code generation, outside this repo). An interactive survey-taking
-flow. Conventional questionnaire items — Likert, demographics, satisfaction ratings, branching
+Aggregating across responses — a group ranking, a tally, or any live result. Drawing a sample:
+`fetch` reads whatever list the dataset serves, whole and in order. Re-reading a dataset a program
+has already compiled against. Authenticating to one. An interactive survey-taking flow. Conventional questionnaire items — Likert, demographics, satisfaction ratings, branching
 logic. Ranking objects other than a line of text. Any analysis of the responses collected.
 Enforced one-response-per-person.
 
 ## Related repos
 
 - `l0000` — the base language and the View harness. Both are npm dependencies, not workspaces.
-- `l0170` — the fetch-and-transform dialect that resolves a survey name into its idea set at code
-  generation. The generic service-caller; L0182 consumes its output as inlined `ideas`.
+- `l0170` — the fetch-and-transform dialect `src/fetch.ts` is modelled on. Not a dependency and
+  not an upstream: L0182 reads its own dataset, because none of L0170's other operations are
+  wanted and a pipeline binding would not fit. Read its `FETCH` before changing ours.
 - `console/docs/language-authoring-style.md` — the style spec this dialect follows.
 - `console/src/lib/languages.ts` — the catalog. **L0182 must be registered here to reach any
-  user.** Its `routingHint` still describes the adaptive sample, the shared pool and
-  humans-and-agents-into-one-pool: all false now, and it must be rewritten keeping its `do NOT`
-  and `never` clauses or L0180 starts absorbing survey requests.
+  user.** Its `routingHint` is rewritten on branch `l0182-routing-hint`; keep its `do NOT` and
+  `never` clauses when editing, or L0180 starts absorbing survey requests. L0182 declares no
+  `composesWith` and should not: it reads its own dataset rather than binding an upstream.
 - `graffiticode-mcp-server` — its `open_survey` / `answer_survey` tools target the deleted proxy.
   The agent path is now plain `create_item` / `update_item`, which is exactly the path a person
   uses.

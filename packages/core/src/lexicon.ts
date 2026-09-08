@@ -35,6 +35,14 @@ const attributeWords = Object.fromEntries(
  * would silently discard the first.
  */
 const containers = {
+  // Not a container, but hand-written for the same reason they are: it evaluates to a value the
+  // attribute table cannot describe — whatever the dataset holds — rather than to a keyed record.
+  fetch: fn(
+    "FETCH",
+    1,
+    "<string: any>",
+    "Reads a dataset over HTTP at compile time and evaluates to it: JSON, or CSV as a list of records keyed by its header row. This is how `ideas` gets its set.",
+  ),
   survey: fn(
     "SURVEY",
     1,

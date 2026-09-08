@@ -11,20 +11,61 @@ An L0182 program is one survey and at most one response to it.
 ## Structure
 
 ```
-survey [ name "you-can-choose" ideas ["clean air and water" "affordable housing"] ]..
+survey [
+  name "you-can-choose"
+  ideas fetch "https://example.org/surveys/you-can-choose/ideas.json"
+]..
 ```
 
-The ideas are **not authored by hand**. They are written into the program at code generation:
-the survey's `name` is resolved against the service that holds the pool — through an L0170
-`fetch` — and the set that comes back is inlined here. What you edit afterwards is the response.
+The ideas are **not authored by hand**. They belong to the survey the program names, and `fetch`
+reads them from the dataset that holds them when the program compiles. What you edit afterwards
+is the response.
 
 There is no flow in this language. It does not describe screens, steps, navigation or
 submission, and nothing in it takes a participant through anything. The code is the interface:
 a person writes it in the console's editor, an agent writes it through `update_item`, and both
 produce the same record.
 
+## Fetching the set
+
+`fetch` reads a dataset over HTTP and evaluates to it, so `ideas fetch "…"` is the ordinary way a
+set arrives. It reads **JSON**:
+
+```json
+[
+  { "id": "a3", "text": "protect voting rights" },
+  { "id": "b7", "text": "affordable housing" }
+]
+```
+
+or **CSV**, where the header row names the fields and each row becomes a record:
+
+```
+id,text
+a3,protect voting rights
+b7,"affordable housing, and enough of it"
+```
+
+Both give the same set. Columns the language has no use for are ignored, and a numeric-looking
+`id` stays a string — an idea's id always is one.
+
+Three properties worth knowing:
+
+- **It happens once.** A task id is content-addressed over its code, so the compiled result is
+  stored and served rather than recompiled. A program freezes its set at first compile, which is
+  what a survey wants: a response only means anything against the ideas it was shown. Editing the
+  program is what re-reads the dataset.
+- **It sends no credentials**, so the address has to be public. A URL carrying a key would be
+  stored in the program itself.
+- **It cannot reach inside the deployment.** Loopback, link-local and the cloud metadata endpoint
+  are refused, as is any scheme but `http` and `https`.
+
+A dataset that is neither JSON nor CSV, is empty, or answers with an error is a compile error
+naming the address — never a survey with no ideas in it.
+
 ## The ideas
 
+A set may also be written out in full, for ideas already in hand rather than behind an address.
 Each entry is a line of text, or a record naming the id the service knows it by.
 
 ```

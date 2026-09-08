@@ -1,13 +1,7 @@
 survey [
   name "you-can-choose"
   title "You Can Choose"
-  ideas [
-    "protect voting rights"
-    "universal healthcare system"
-    "affordable housing"
-    "mitigate climate change"
-    "clean air and water"
-  ]
+  ideas fetch "https://example.org/surveys/you-can-choose/ideas.json"
   min-choices 1
   max-choices 3
 ]..

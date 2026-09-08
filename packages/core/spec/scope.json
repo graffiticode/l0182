@@ -4,9 +4,9 @@
   "in_scope": [
     "Recording which ideas someone chose from a named survey's set, and the priority order they put them in",
     "Contributing one new idea that was not already in the set, alongside a selection or on its own",
-    "Holding the set of ideas a response is chosen from, inlined at code generation from the survey named in the program",
+    "Reading the set of ideas a response is chosen from out of a JSON or CSV dataset over HTTP, with `ideas fetch \"<url>\"`, at the moment the program compiles",
     "Bounding how many ideas a response may select, via min-choices and max-choices, and refusing at compile time any response that breaks those bounds",
-    "Keeping the originating service's own ids on the ideas, so a selection means something back where the set came from",
+    "Keeping the originating dataset's own ids on the ideas, so a selection means something back where the set came from",
     "Group ideation and brainstorming where the point is which ideas a person favours and in what order",
     "Being written and edited as code by a person in the editor or by an AI agent through update_item, both producing the identical record"
   ],
@@ -15,7 +15,7 @@
     "Scoring, marking, answer keys, correctness and points. A survey response is never right or wrong, so L0182 has no notion of a correct answer — a request for one belongs to L0180.",
     "Conventional questionnaires and forms — demographics, Likert scales, satisfaction ratings, contact forms, sign-up flows and branching questionnaire logic are not built yet.",
     "A survey-taking flow. L0182 does NOT describe screens, steps, navigation or submission, and there is no interactive player: it never walks anyone through anything, and the rendered view only displays the record. A flow would be a different language or a different client.",
-    "Drawing the sample. The set of ideas is resolved from the survey's name at code generation, through an L0170 fetch — L0182 does NOT hold a pool, does NOT sample it and never calls a service itself.",
+    "Drawing the sample. `fetch` reads whatever list the dataset serves, whole and in order — L0182 does NOT hold a pool, does NOT sample or shuffle it, and never re-reads it once a program has compiled.",
     "Aggregating across respondents. L0182 records ONE response and does NOT compute a group ranking, tally, score or live result of any kind; ranking many responses together is not built yet.",
     "Running the statistics — significance testing, clustering, sentiment analysis or any analysis of the responses collected.",
     "Recruiting, quotas, screening, incentives and panel management.",

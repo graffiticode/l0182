@@ -65,7 +65,7 @@ export const attributeFields: Record<string, AttributeMeta> = {
     field: "selection",
     expects: "refs",
     description:
-      'The ideas chosen, in priority order — the order IS the ranking, first is most important. Each entry is an idea\'s id in quotes, or its position as a whole number counting from 0: selection [2 0].',
+      "The ideas chosen, in priority order — the order IS the ranking, first is most important. Each entry is an idea's id in quotes, or its position as a whole number counting from 0: selection [2 0].",
   },
   IDEA: {
     field: "idea",
@@ -201,12 +201,13 @@ export function checkValue(name: string, meta: AttributeMeta, raw: any): string 
       return `${word}: expected a list of ideas, by id or by position, e.g. ${word} ["i0" "i2"] or ${word} [0 2].`;
     }
     const bad = raw.findIndex(
-      (v) => !((typeof v === "string" && v.trim()) || (typeof v === "number" && Number.isInteger(v))),
+      (v) =>
+        !((typeof v === "string" && v.trim()) || (typeof v === "number" && Number.isInteger(v))),
     );
     if (bad >= 0) {
       return (
         `${word}: entry ${bad + 1} is ${showValue(raw[bad])}; every entry must be an idea's id ` +
-        "in \"quotes\", or its position as a whole number."
+        'in "quotes", or its position as a whole number.'
       );
     }
     return null;
