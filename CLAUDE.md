@@ -163,20 +163,22 @@ diagnostic. Every message names the fix:
 The tests assert on that text, not merely that compilation failed. A message that stops naming
 the fix is a regression even when the program still errors.
 
-### A selection may name an idea by position, but only when the set has no ids
+### A selection names an idea by id or by position, and both always work
 
-`selection` takes an id or a **0-based position**, and `resolveResponse` normalises both to ids
-before they reach the output — so the compiled record is identical either way and the input form
-costs nothing downstream.
+`selection` takes an id (a string) or a **0-based position** (a number), and `resolveResponse`
+normalises both to ids before they reach the output — so the compiled record is identical either
+way and the input form costs nothing downstream.
 
 Two things about the rule are load-bearing:
 
-- **Positions are refused when any idea carries an authored id**, including a set where only some
-  do. The id is what the originating service understands, so a positional selection could not be
-  handed back to it; resolving one anyway would produce a record that means nothing there.
+- **The notation is what distinguishes them**, not the survey. A string is always an id and a
+  number is always a position, which holds even for a set whose ids look like numbers:
+  `selection [1]` is the second idea, `selection ["1"]` is the idea called `1`. That is why
+  positions stay legal for a set carrying the service's own ids — nothing is ambiguous, and an
+  author reading ten ideas should not have to copy an opaque id to point at the third.
 - **0-based, not 1-based**, because the language already derives `i0`, `i1`, … by position for a
   set that has none — a position *is* the number in the derived id, and making the two disagree
-  would be gratuitous. Both range messages say where counting starts, because an off-by-one here
+  would be gratuitous. The range message says where counting starts, because an off-by-one here
   does not fail: it records a different ranking than the one that was meant.
 
 ### Ideas keep the service's ids when they have them

@@ -68,19 +68,6 @@ function normaliseIdeas(raw: any[]): Idea[] {
   );
 }
 
-/**
- * Did the author's set carry ids of its own?
- *
- * This is what decides whether a `selection` may name ideas by position. When the fetch returned
- * ids, a position is ambiguous in the way that matters: the id is the thing the originating
- * service understands, and a selection written positionally could not be handed back to it.
- */
-function hasAuthoredIds(raw: any[]): boolean {
-  return raw.some(
-    (entry) => entry !== null && typeof entry === "object" && typeof entry.id === "string" && entry.id.trim(),
-  );
-}
-
 /** Reject a set that cannot support a meaningful choice, or that cannot be selected from unambiguously. */
 function assertIdeas(ideas: Idea[]): void {
   if (ideas.length < 2) {
@@ -147,24 +134,19 @@ function resolveBounds(
 /**
  * Resolve one `selection` entry to an idea id.
  *
+ * A number is a position, a string is an id, and the two can never be confused for one another
+ * because an id is always a string — even for a set whose ids happen to look like numbers, where
+ * `selection [1]` is the second idea and `selection ["1"]` is the idea called "1". That is why
+ * positions stay legal for a set that carries the service's own ids: the notation says which is
+ * meant, so nothing is ambiguous, and an author reading a list of ten ideas should not have to
+ * copy an opaque id to point at the third one.
+ *
  * A position is 0-based, matching the ids the language derives for a set that has none (`i0`
  * upward). Both messages say so outright, because an off-by-one here does not fail — it records
  * a different ranking than the one that was meant, which is the kind of wrong that looks right.
  */
-function resolveRef(
-  ref: string | number,
-  at: number,
-  survey: Survey,
-  authoredIds: boolean,
-): string {
+function resolveRef(ref: string | number, at: number, survey: Survey): string {
   if (typeof ref === "number") {
-    if (authoredIds) {
-      throw new Error(
-        `response: \`selection\` entry ${at + 1} is the position ${ref}, but this survey's ideas ` +
-          "carry ids of their own, so a position does not identify one unambiguously. Name the id " +
-          `instead — the ids are: ${survey.ideas.map((x) => x.id).join(", ")}.`,
-      );
-    }
     if (ref < 0 || ref >= survey.ideas.length) {
       throw new Error(
         `response: \`selection\` entry ${at + 1} is the position ${ref}, but this survey has ` +
@@ -178,10 +160,8 @@ function resolveRef(
   if (!survey.ideas.some((x) => x.id === ref)) {
     throw new Error(
       `response: \`selection\` entry ${at + 1} is ${JSON.stringify(ref)}, which is not an idea in ` +
-        `this survey. The ids are: ${survey.ideas.map((x) => x.id).join(", ")}.` +
-        (authoredIds
-          ? ""
-          : " This set has no ids of its own, so you can also name an idea by its position, counting from 0."),
+        `this survey. The ids are: ${survey.ideas.map((x) => x.id).join(", ")}. ` +
+        "An idea can also be named by its position, counting from 0.",
     );
   }
   return ref;
@@ -194,17 +174,13 @@ function resolveRef(
  * was chosen, and one naming an idea nobody was offered is not a wrong answer but a meaningless
  * one.
  */
-function resolveResponse(
-  authored: AuthoredResponse,
-  survey: Survey,
-  authoredIds: boolean,
-): SurveyResponse {
+function resolveResponse(authored: AuthoredResponse, survey: Survey): SurveyResponse {
   const { idea } = authored;
   const selection: string[] = [];
   const seen = new Set<string>();
 
   authored.selection.forEach((ref, i) => {
-    const id = resolveRef(ref, i, survey, authoredIds);
+    const id = resolveRef(ref, i, survey);
     if (seen.has(id)) {
       // Reported by id rather than as written, because `selection ["i0" 0]` names the same idea
       // twice in two notations and saying so is the whole point of the message.
@@ -294,7 +270,6 @@ export function buildSurvey(raw: any): Compiled {
     );
   }
 
-  const authoredIds = hasAuthoredIds(attrs.ideas as any[]);
   const ideas = normaliseIdeas(attrs.ideas as any[]);
   assertIdeas(ideas);
   const { minChoices, maxChoices } = resolveBounds(attrs, ideas);
@@ -309,8 +284,5 @@ export function buildSurvey(raw: any): Compiled {
 
   if (attrs.response === undefined) return { survey };
 
-  return {
-    survey,
-    response: resolveResponse(attrs.response as AuthoredResponse, survey, authoredIds),
-  };
+  return { survey, response: resolveResponse(attrs.response as AuthoredResponse, survey) };
 }

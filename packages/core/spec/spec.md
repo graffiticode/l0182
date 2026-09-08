@@ -82,12 +82,12 @@ survey [
 `selection` names the ideas chosen, never their text, and **the order is the ranking** — first is
 most important. No idea may appear twice.
 
-There are two ways to name one, and which is legal depends on the set. A set of plain strings has
-no ids of its own — the language derives `i0`, `i1`, … by position — so an idea may be named by
-**its position, counting from 0**, and `selection [2 0]` is the third idea then the first. A set
-whose entries carry their own ids must name those ids instead: the id is what the originating
-service understands, and a position could not be handed back to it. Either way the compiled
-record carries ids, so the two forms differ only in the source.
+An idea may be named **by its id in quotes** — `selection ["b7" "a3"]` — or **by its position,
+counting from 0** — `selection [2 0]` is the third idea then the first. Both work for any set. A
+number is always a position and a string is always an id, so the two cannot be confused even when
+a set's ids look like numbers: `selection [1]` is the second idea, `selection ["1"]` is the idea
+whose id is `1`. Either way the compiled record carries ids, so the two forms differ only in the
+source.
 
 `idea` is one new idea, contributed by whoever answered. It must not repeat an idea already in
 the set; that is what makes it new. It may stand alone, with nothing selected.

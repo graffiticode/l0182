@@ -163,9 +163,9 @@ describe("the response", () => {
     expect(msg).toContain("The ids are: i0, i1, i2");
   });
 
-  it("offers positions in that message when the set has no ids of its own", async () => {
+  it("offers positions in that message, since they are always available", async () => {
     const msg = await errorOf(survey(`${IDEAS} response [ selection ["i9"] ]`));
-    expect(msg).toContain("name an idea by its position, counting from 0");
+    expect(msg).toContain("named by its position, counting from 0");
   });
 
   it("refuses the same id twice", async () => {
@@ -249,21 +249,26 @@ describe("selecting by position", () => {
     expect(await errorOf(survey(`${IDEAS} response [ selection [-1] ]`))).toContain("the position -1");
   });
 
-  it("refuses a position when the set carries its own ids, and names them", async () => {
-    // The id is what the originating service understands, so a positional selection could not be
-    // handed back to it. Better to refuse than to resolve into something that means nothing there.
-    const msg = await errorOf(
+  it("resolves a position against a set that carries the service's own ids", async () => {
+    const out = await compile(
       survey(`ideas [ {id: "a3" text: "one"} {id: "b7" text: "two"} ] response [ selection [1] ]`),
     );
-    expect(msg).toContain("carry ids of their own");
-    expect(msg).toContain("the ids are: a3, b7");
+    expect(out.response.selection).toEqual(["b7"]);
   });
 
-  it("refuses positions when only SOME ideas carry ids, because the set is then ambiguous", async () => {
-    const msg = await errorOf(
-      survey(`ideas [ {id: "a3" text: "one"} "two" ] response [ selection [1] ]`),
+  it("resolves a position against a set where only some ideas carry ids", async () => {
+    const out = await compile(
+      survey(`ideas [ {id: "a3" text: "one"} "two" ] response [ selection [1 0] ]`),
     );
-    expect(msg).toContain("carry ids of their own");
+    expect(out.response.selection).toEqual(["i1", "a3"]);
+  });
+
+  it("tells a numeric id apart from a position by its notation", async () => {
+    // The one case where the two could collide: ids that look like numbers. A string is always an
+    // id and a number is always a position, so `["1"]` and `[1]` name different ideas here.
+    const set = `ideas [ {id: "1" text: "one"} {id: "2" text: "two"} ]`;
+    expect((await compile(survey(`${set} response [ selection ["1"] ]`))).response.selection).toEqual(["1"]);
+    expect((await compile(survey(`${set} response [ selection [1] ]`))).response.selection).toEqual(["2"]);
   });
 
   it("refuses a fractional position", async () => {

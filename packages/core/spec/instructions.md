@@ -71,13 +71,13 @@ survey [
 
 - `selection` names the ideas chosen, never their text, and **the order is the ranking** — first
   is most important. No idea may appear twice.
-- **When the set carries no ids of its own, name each idea by its position, counting from 0** —
-  `selection [2 0]` is the third idea then the first. That is the form above, and the one to
-  prefer for a set of plain strings: the language derives `i0`, `i1`, … for exactly those ideas,
-  so writing `"i2"` is spelling out a number it already knows.
-- **When the ideas carry their own ids, name the ids** — `selection ["b7" "a3"]`. Positions are
-  refused there, because the id is what the service the set came from understands and a position
-  could not be handed back to it.
+- An idea may be named **by its id in quotes** — `selection ["b7" "a3"]` — or **by its position,
+  counting from 0** — `selection [2 0]` is the third idea then the first. Both work for any set.
+- A number is always a position and a string is always an id, so the two can never be confused,
+  even for a set whose ids look like numbers: `selection [1]` is the second idea, `selection ["1"]`
+  is the idea whose id is `1`.
+- Prefer positions when the set is plain strings — the language numbers those ideas `i0`, `i1`, …
+  itself, so writing `"i2"` spells out a number it already knows.
 - `idea` is one new idea from whoever answered. It must NOT repeat an idea already in the set —
   that is what makes it new. It may stand alone, with nothing selected.
 
@@ -126,7 +126,7 @@ Every word L0182 adds to the base language. All are arity 1.
 | `ideas`       | `<list: record>`   |   1   | The set of ideas this response is chosen from, written at code generation. Each entry is a line of text, or a record naming the service's own id: ideas ["…" {id: "a3" text: "…"}]. |
 | `min-choices` | `<number: record>` |   1   | Fewest ideas a response may select. Defaults to 0.                                                                                                                                  |
 | `max-choices` | `<number: record>` |   1   | Most ideas a response may select. Defaults to the number of ideas.                                                                                                                  |
-| `selection`   | `<list: record>`   |   1   | The ideas chosen, in priority order — the order IS the ranking, first is most important. Each entry is an idea's id, or, when the set carries no ids of its own, its position counting from 0: selection [2 0]. |
+| `selection`   | `<list: record>`   |   1   | The ideas chosen, in priority order — the order IS the ranking, first is most important. Each entry is an idea's id in quotes, or its position as a whole number counting from 0: selection [2 0]. |
 | `idea`        | `<string: record>` |   1   | One new idea, contributed by whoever answered. It must not repeat an idea already in the set — that is what makes it new.                                                           |
 | `survey`      | `<list: record>`   |   1   | A named set of ideas to choose from, and optionally the response to it.                                                                                                             |
 | `response`    | `<list: record>`   |   1   | The ideas chosen, in priority order, and optionally one new idea that was not in the set.                                                                                           |

@@ -62,8 +62,9 @@ survey [
 ```
 
 `selection` names the ideas chosen and **the order is the ranking** — first is most important.
-This set is plain strings, so the ideas are named by **position, counting from 0**; had they
-carried ids of their own, `selection` would have to name those ids instead. `idea` is one new
+An idea may be named by its **id in quotes** or by its **position, counting from 0** — a number
+is always a position, a string always an id, so the two never collide. Positions read best for a
+set of plain strings like this one, whose ids the language numbered itself. `idea` is one new
 idea that must not already be in the set; that is what makes it new, and it may stand alone with
 nothing selected.
 

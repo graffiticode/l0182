@@ -65,7 +65,7 @@ export const attributeFields: Record<string, AttributeMeta> = {
     field: "selection",
     expects: "refs",
     description:
-      'The ideas chosen, in priority order — the order IS the ranking, first is most important. Each entry is an idea\'s id, or, when the set carries no ids of its own, its position counting from 0: selection [2 0].',
+      'The ideas chosen, in priority order — the order IS the ranking, first is most important. Each entry is an idea\'s id in quotes, or its position as a whole number counting from 0: selection [2 0].',
   },
   IDEA: {
     field: "idea",
@@ -193,11 +193,10 @@ export function checkValue(name: string, meta: AttributeMeta, raw: any): string 
     return null;
   }
   if (meta.expects === "refs") {
-    // A reference to an idea: its id, or its position. Positions exist because a set fetched
-    // without ids of its own gets them by position anyway, and making the author write "i2" to
-    // mean the third idea is ceremony over a number the language derived itself. Which of the
-    // two forms is legal for a given survey is decided in `survey.ts`, where the ideas are in
-    // hand; here we only reject an entry that is neither.
+    // A reference to an idea: its id as a string, or its position as a number. The two can never
+    // collide — even for a set whose ids look like numbers — because the notation says which is
+    // meant. Resolving them needs the ideas in hand, so that happens in `survey.ts`; here we only
+    // reject an entry that is neither form.
     if (!Array.isArray(raw) || !raw.length) {
       return `${word}: expected a list of ideas, by id or by position, e.g. ${word} ["i0" "i2"] or ${word} [0 2].`;
     }

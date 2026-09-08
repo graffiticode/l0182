@@ -44,7 +44,7 @@
       "required": ["selection"],
       "properties": {
         "selection": {
-          "description": "The ids of the ideas chosen, in priority order. The order IS the ranking, first is most important. Empty when only a new idea was contributed. Source may name an idea by position instead of by id when the set carries no ids of its own; the compiler resolves those, so compiled output is always ids.",
+          "description": "The ids of the ideas chosen, in priority order. The order IS the ranking, first is most important. Empty when only a new idea was contributed. Source may name an idea by its id in quotes or by its position as a number; the compiler resolves positions, so compiled output is always ids.",
           "type": "array",
           "uniqueItems": true,
           "items": { "type": "string" }

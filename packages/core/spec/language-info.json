@@ -21,7 +21,7 @@
     {
       "prompt": "Record that I chose affordable housing, clean air and water, and voting rights, in that order.",
       "produces": "response",
-      "notes": "`selection` names the ideas chosen and the order is the ranking. A set of plain strings is named by position from 0 — selection [2 0] — and a set carrying its own ids must name those ids."
+      "notes": "`selection` names the ideas chosen and the order is the ranking. An entry is an id in quotes or a position counting from 0 — selection [2 0] — and both work for any set."
     },
     {
       "prompt": "Add my own idea alongside my selection: make public transit free.",
