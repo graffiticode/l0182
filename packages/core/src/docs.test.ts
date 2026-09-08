@@ -216,6 +216,42 @@ describe("the container tables match validAttributes", () => {
   });
 });
 
+describe("the sample dataset", () => {
+  // spec/ideas.json and spec/ideas.csv are SERVED (build-static.js copies them), and the
+  // documented examples point `ideas fetch` at them — so an author who copies one gets a
+  // program that compiles against a live address. That only holds while the files are real
+  // ideas and the two formats agree.
+  const json = JSON.parse(readFileSync("spec/ideas.json", "utf-8"));
+  const csv = readFileSync("spec/ideas.csv", "utf-8");
+
+  test("ideas.json is a set L0182 accepts", async () => {
+    const literal = json
+      .map((i: any) => `{id: ${JSON.stringify(i.id)} text: ${JSON.stringify(i.text)}}`)
+      .join(" ");
+    const out: any = await compileSrc(`survey [ name "you-can-choose" ideas [ ${literal} ] ]..`);
+    expect(out.survey.ideas).toEqual(json);
+    expect(json.length).toBeGreaterThan(1);
+  });
+
+  test("ideas.csv holds the same set, in the same order", () => {
+    const rows = csv.trim().split("\n");
+    expect(rows[0]).toBe("id,text");
+    // Enough CSV to check agreement: a field is quoted only when it contains a comma.
+    const parsed = rows.slice(1).map((row) => {
+      const at = row.indexOf(",");
+      const id = row.slice(0, at);
+      const rest = row.slice(at + 1);
+      const text = rest.startsWith('"') ? rest.slice(1, -1) : rest;
+      return { id, text };
+    });
+    expect(parsed).toEqual(json);
+  });
+
+  test("the CSV exercises a quoted field, because an idea will contain a comma", () => {
+    expect(csv).toMatch(/,"[^"]*,[^"]*"/);
+  });
+});
+
 describe("examples.md numbering is coherent", () => {
   const text = readFileSync("spec/examples.md", "utf-8");
   const lines = text.split("\n");

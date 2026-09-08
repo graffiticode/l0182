@@ -13,13 +13,14 @@ An L0182 program is one survey and at most one response to it.
 ```
 survey [
   name "you-can-choose"
-  ideas fetch "https://example.org/surveys/you-can-choose/ideas.json"
+  ideas fetch "https://l0182.graffiticode.org/ideas.json"
 ]..
 ```
 
-The ideas are **not authored by hand**. They belong to the survey the program names, and `fetch`
-reads them from the dataset that holds them when the program compiles. What you edit afterwards
-is the response.
+The ideas are **given, not invented**. They belong to the survey the program names, and there
+are two ways to have them: `fetch` reads them from the dataset that holds them when the program
+compiles, or they are written out in full when they are already in hand. Neither is a fallback
+for the other. What you edit afterwards is the response.
 
 There is no flow in this language. It does not describe screens, steps, navigation or
 submission, and nothing in it takes a participant through anything. The code is the interface:
@@ -63,7 +64,11 @@ Three properties worth knowing:
 A dataset that is neither JSON nor CSV, is empty, or answers with an error is a compile error
 naming the address — never a survey with no ideas in it.
 
-## The ideas
+L0182 serves a sample set of twelve civic priorities in both formats, so an example is
+something you can actually run: `https://l0182.graffiticode.org/ideas.json` and
+`https://l0182.graffiticode.org/ideas.csv`.
+
+## Writing the ideas out
 
 A set may also be written out in full, for ideas already in hand rather than behind an address.
 Each entry is a line of text, or a record naming the id the service knows it by.

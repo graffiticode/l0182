@@ -7,33 +7,37 @@ record — covering creating a survey from a dataset of ideas, the ideas and the
 a response must satisfy, recording a selection in priority order, and contributing a new idea.
 
 Each numbered line is a prompt in the author's own voice. Prompts describe WHAT to build, never
-how to write it: an author asks for a survey, not for a `survey [...]` program. Note that the
-ideas themselves are never asked for — they are read from a dataset when the program compiles,
-so a prompt names the survey and where its ideas live, not their contents.
+how to write it: an author asks for a survey, not for a `survey [...]` program. The ideas are
+given rather than invented, so a prompt either names the address they live at or supplies them —
+never asks for them to be made up.
+
+The addresses below are L0182's own sample dataset, the same twelve civic priorities in both
+formats, so these prompts are runnable rather than illustrative:
+`https://l0182.graffiticode.org/ideas.json` and `https://l0182.graffiticode.org/ideas.csv`.
 
 ## Category 1: Creating a Survey from a Dataset (1–10)
 
-1. Set up the 'you-can-choose' survey from https://example.org/surveys/you-can-choose/ideas.json so I can record what I picked.
-2. Create a survey record that pulls our team-priorities ideas from that JSON endpoint.
-3. I want to answer the neighbourhood-association survey — read its ideas from the CSV at that address.
-4. Make me a survey from the 'product-feedback' pool, titled 'Product Feedback'.
-5. Start a survey record for the campus-improvements pool.
-6. Get the ideas for the 'parks-budget' survey from its dataset so I can choose between them.
-7. Create the workplace-policies survey with the title 'What Would You Change?'.
-8. Set up a record for the meeting-overload brainstorm.
-9. Pull in the 'climate-priorities' survey and give it a proper title.
-10. Make a survey record for new-product-name, reading the suggestions from that spreadsheet export.
+1. Set up the 'you-can-choose' survey from https://l0182.graffiticode.org/ideas.json so I can record what I picked.
+2. Create a survey record called team-priorities that pulls its ideas from https://l0182.graffiticode.org/ideas.json.
+3. I want to answer the neighbourhood-association survey — read its ideas from https://l0182.graffiticode.org/ideas.csv.
+4. Make me a survey named product-feedback and titled 'Product Feedback', reading its ideas from https://l0182.graffiticode.org/ideas.json.
+5. Start a survey record for campus-improvements from these ideas: better wifi in the library, longer lab hours, more bike racks, cheaper printing.
+6. Get the ideas for the 'parks-budget' survey from https://l0182.graffiticode.org/ideas.csv so I can choose between them.
+7. Create the workplace-policies survey titled 'What Would You Change?' from the list I just pasted.
+8. Set up a record for the meeting-overload brainstorm using the ideas at https://l0182.graffiticode.org/ideas.json.
+9. Pull in the 'climate-priorities' survey from https://l0182.graffiticode.org/ideas.json and give it a proper title.
+10. Make a survey record for new-product-name, reading the suggestions from the CSV export at https://l0182.graffiticode.org/ideas.csv.
 
 ## Category 2: The Dataset and Its Ids (11–18)
 
-11. Build the survey so each idea keeps the id the dataset gave it.
-12. The CSV has an id column as well as the text — make sure those ids are preserved.
+11. Build the survey from https://l0182.graffiticode.org/ideas.json so each idea keeps the id the dataset gave it.
+12. The CSV at https://l0182.graffiticode.org/ideas.csv has an id column as well as the text — make sure those ids are preserved.
 13. Create a survey from a JSON list of plain strings, with no ids of their own.
 14. Set up the survey with these ten ideas I already have, keeping their service ids.
 15. Add a title above the ideas but leave the ideas themselves as they came back.
 16. The dataset came back without ids — number them by position.
 17. Make a survey with a mix: some ideas carry ids, some are plain text.
-18. Set up the survey record and give it a short title for the group.
+18. Set up the survey record from https://l0182.graffiticode.org/ideas.csv and give it a short title for the group.
 
 ## Category 3: Bounds on a Response (19–26)
 

@@ -35,16 +35,19 @@ trailing record.
 | a scalar                    | the value itself — `max-choices 5`, `title "…"`                     |
 | a list                      | the list itself — `ideas ["…" "…"]`, `selection ["i2" "i0"]`        |
 
-## The ideas come from the dataset, not from you
+## The ideas are given, never invented
 
-**Never invent the ideas.** They belong to the survey the program names. Point `ideas` at the
-dataset that holds them and `fetch` reads it when the program compiles:
+They belong to the survey the program names, so there are exactly two ways to get them — and
+**making them up is not one of them.**
+
+**If they live at an address**, point `ideas` at it and `fetch` reads the dataset when the
+program compiles:
 
 ```
 survey [
   name "you-can-choose"
   title "You Can Choose"
-  ideas fetch "https://example.org/surveys/you-can-choose/ideas.json"
+  ideas fetch "https://l0182.graffiticode.org/ideas.json"
 ]..
 ```
 
@@ -71,8 +74,8 @@ credentials — and it may not point inside the network the language server runs
 The fetch happens **once**, when the program first compiles, and the set is then fixed: a
 response only means anything against the ideas it was shown.
 
-A set may also be written out in full, which is what to do when the ideas are already in hand
-rather than behind an address:
+**If they are already in hand** — the user pasted them, or an earlier step produced them —
+write them out in full:
 
 ```
 survey [
@@ -84,10 +87,19 @@ survey [
 ]..
 ```
 
-Keep the service's ids whenever the dataset carried them. An entry with no id is numbered by
-position, `i0` upward.
+Neither form is a fallback for the other: fetch when the ideas live somewhere, write them out
+when you have them. Keep the service's ids whenever the dataset carried them. An entry with no
+id is numbered by position, `i0` upward.
 
 A set needs at least two ideas. No two may repeat the same text, and no two may share an id.
+
+### A dataset to try
+
+L0182 serves a sample set of twelve civic priorities, in both formats, for examples and for
+getting started:
+
+- `https://l0182.graffiticode.org/ideas.json`
+- `https://l0182.graffiticode.org/ideas.csv`
 
 ## The response
 
@@ -171,7 +183,7 @@ Every word L0182 adds to the base language. All are arity 1.
 survey [
   name "you-can-choose"
   title "You Can Choose"
-  ideas fetch "https://example.org/surveys/you-can-choose/ideas.json"
+  ideas fetch "https://l0182.graffiticode.org/ideas.json"
   min-choices 1
   max-choices 5
   response [

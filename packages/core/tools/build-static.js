@@ -4,7 +4,7 @@
 //     (the legacy lexicon.js request path is aliased to it by the API server.)
 //   - instructions.md: parent (L0000) instructions concatenated with L0182's.
 // The rest (spec.html, language-info.json, scope.json, schema.json, template.gc,
-// usage-guide.md) are L0182's own.
+// usage-guide.md, ideas.json, ideas.csv) are L0182's own.
 import { createRequire } from "module";
 import {
   mkdirSync,
@@ -51,7 +51,12 @@ const ownInstructions = readFileSync(join(specDir, "instructions.md"), "utf-8");
 writeFileSync(join(outDir, "instructions.md"), `${parentInstructions}\n\n${ownInstructions}`);
 
 // 4. Copy L0182's own verbatim spec assets.
-for (const f of ["usage-guide.md", "scope.json", "schema.json", "template.gc"]) {
+//
+// ideas.json and ideas.csv are the sample dataset. They are SERVED, not merely shipped: the
+// documented examples point `ideas fetch` at them, so publishing them here is what makes those
+// examples true — an author can copy one and it compiles against a live address. Both hold the
+// same twelve ideas, and docs.test.ts asserts they agree.
+for (const f of ["usage-guide.md", "scope.json", "schema.json", "template.gc", "ideas.json", "ideas.csv"]) {
   const src = join(specDir, f);
   if (existsSync(src)) copyFileSync(src, join(outDir, f));
 }

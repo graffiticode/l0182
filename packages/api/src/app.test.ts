@@ -35,6 +35,11 @@ describe("public assets are readable with no token", () => {
     "scope.json",
     "template.gc",
     "spec.html",
+    // The sample dataset the documented examples fetch. It must be readable with no token for
+    // the same reason as the rest — `fetch` sends no credentials — and it is the one asset a
+    // compile actually reads back over the network.
+    "ideas.json",
+    "ideas.csv",
   ];
 
   for (const file of PUBLIC) {

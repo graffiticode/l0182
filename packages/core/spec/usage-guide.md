@@ -6,9 +6,10 @@
 
 L0182 is a survey record for collective intelligence. A program is a named set of ideas someone
 is asked to choose between, and — once something has answered — the response to it: the ideas
-chosen in priority order, plus one new idea that was not in the set. The ideas are never authored
-by hand: `ideas fetch "<url>"` reads them from the dataset that holds them — JSON, or CSV keyed
-by its header row — when the program compiles, and the set is fixed from then on. L0182 describes
+chosen in priority order, plus one new idea that was not in the set. The ideas are given rather than
+invented: either `ideas fetch "<url>"` reads them from the dataset that holds them — JSON, or CSV
+keyed by its header row — when the program compiles, or they are written out in full when they
+are already in hand. Either way the set is fixed once the program has compiled. L0182 describes
 no flow at all: no screens, no steps, no navigation, no submission, and nothing that draws a
 sample or aggregates across respondents. The code is the interface — a person edits the program
 in the console's editor, an agent edits it through `update_item`, and both produce the identical
@@ -19,7 +20,7 @@ record, which the renderer shows as the set on one side and the response on the 
 The smallest survey is a name and somewhere to read the ideas from:
 
 ```
-survey [ name "priorities" ideas fetch "https://example.org/surveys/priorities/ideas.json" ]..
+survey [ name "priorities" ideas fetch "https://l0182.graffiticode.org/ideas.json" ]..
 ```
 
 That is a survey awaiting a response. `name` says which survey this is and ties any later
@@ -34,6 +35,9 @@ network the language server runs in.
 
 It reads the dataset once, when the program first compiles, and the set is fixed from then on.
 That is deliberate: a response only means anything against the ideas it was shown.
+
+L0182 serves a sample set of twelve civic priorities in both formats, so the example above is
+one you can run: `https://l0182.graffiticode.org/ideas.json` and `https://l0182.graffiticode.org/ideas.csv`.
 
 ## Writing the set out instead
 
