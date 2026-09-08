@@ -30,12 +30,19 @@ npm run build      # core → build-static → api → view → view:embed → a
 npm run dev        # API on :50182 (expects Firestore emulator :8080, local auth :4100)
 npm run start      # the built API server
 npm test           # core + api + view suites
-npm run lint       # ESLint over the monorepo
+npm run lint       # ESLint over the monorepo (npm run lint:fix to write)
 npm run format     # Prettier over the monorepo (printWidth 100, double quotes)
+npm run publish    # core AND view to npm — both are published packages
+npm run gcp:build  # submits cloudbuild.yaml, the path that carries both deploy flags
 npm run gcp:deploy # Cloud Run as l0182, us-central1 — but read "Deploying" first
+npm run gcp:logs   # Cloud Run logs for l0182
 
 npm run -w packages/view dev   # the /form embed app on Vite alone, no API, no auth
 ```
+
+`gcp:build` and `gcp:deploy` are not two spellings of the same thing. `gcp:build` submits
+`cloudbuild.yaml`, which passes `--update-env-vars` and `--max-instances=1`; `gcp:deploy`
+passes neither and only inherits what the service already has. See "Deploying".
 
 Node 22 (`.nvmrc`, and `engines` refuses lower), npm workspaces.
 
@@ -53,6 +60,10 @@ from the root has the wrong cwd:
 npm run -w packages/core test -- src/items.test.ts
 npm run -w packages/core test -- src/items.test.ts -t "sample"
 ```
+
+Core tests compile through `src/harness.ts` — `compile(src)` and `errorOf(src)`, which run the
+real parser against the real lexicon and append the `..` terminator if it is missing. A new
+test that wires the parser itself is doing by hand what every other test gets from there.
 
 ### Environment
 
@@ -232,7 +243,10 @@ where there is no CDN and no cross-origin host.
 - **Public static is mounted BEFORE auth.** `lexicon.json`, `schema.json`, `spec.html`,
   `instructions.md`, `language-info.json`, `usage-guide.md`, `scope.json` and `template.gc` must
   be fetchable with no token — an agent reads them before it has one. `index: false` keeps
-  `GET /` a health check rather than the embed's `index.html`.
+  `GET /` a health check rather than the embed's `index.html`. Note that `routes.auth` is not a
+  gate: it attaches `req.auth` and **does not reject an anonymous request**, so mounting after
+  it protects nothing by itself. `/compile` and `/survey` are not token-protected by being
+  below it.
 - **`/assets/*` is immutable, `/form` must never be held.** The bundle's filenames carry a
   content hash, so a new build is a new name and those may be cached forever. The embed HTML
   *names* that bundle, so caching it caches the whole deploy: new assets sit there unreferenced
@@ -265,6 +279,31 @@ broken by an innocent-looking change and then misread as noise. It drives a huma
 through the same proxy functions the routes call, against a recorded service, and asserts the
 two runs differ in **exactly one field**. If it fails, the two paths diverged: converge them.
 Relaxing the assertion deletes the only check on the property this language exists to have.
+
+### `scripts/post-response.mjs` is the recompile an agent never does
+
+The MCP tools reach the proxy only, so an agent's participation lives in the
+collective-intelligence service and nowhere else. The rendered form additionally reports the
+answer as a `response` action, and *that* recompile is what writes the upstream L0000 object.
+This script is that recompile for a caller with no browser — the composite `code+data` task the
+console's task list nests under its root.
+
+Three things about it are easy to get wrong, and its own header records each one:
+
+- **It takes the item's TASK id, not its item id.** `/compile` decodes the argument as base64 of
+  `{"taskIds":[…]}` and rejects an item id outright. `get_item` returns both; the one wanted
+  here is `task_id`.
+- **The JSON file is the `response` value** — participation, item cursor, answers — not the
+  whole data object. `response` is a separate key the compiler never emits, which is what lets
+  it survive the recompile PROG spreads `data` into.
+- **It reads `GC_AUTH_URL`, `GC_API_URL`, `GC_CONSOLE_URL` and `GC_API_KEY_SECRET`, deliberately
+  not `NEXT_PUBLIC_GC_*`.** Those are the console's dev-time variables and are routinely set to
+  localhost in a working shell; reading them sent a production api key to a local auth service,
+  which answers "invalid api-key" — a message that reads as a bad credential rather than as a
+  request that went to the wrong place.
+
+Auth is two hops because `api.graffiticode.org` verifies Firebase ID tokens, not raw
+Graffiticode API keys: the key is exchanged for a custom token, then signed in.
 
 ### The mock backend, and what it is honest about
 
@@ -305,6 +344,11 @@ be the alternative.
 `participants` is sent for the same reason and matters more: it is the authored gate, and the
 Form originally omitted it, so a survey restricted to one class enforced that against agents and
 admitted humans. Send it on both open and answer.
+
+The view's half of this is `packages/view/src/lib/service.ts` — the client for the three
+endpoints, and where `Frame`, `Idea`, `RankedIdea` and `ItemRef` are declared. It needs no base
+URL: the proxy is served by the same origin as the `/form` bundle it is loaded from. A new item
+kind that needs its own slice of the frame adds it there, to the superset, not to the item.
 
 ### `actor` is derived from the route, never self-asserted
 
@@ -419,15 +463,20 @@ in mind.
    `ITEM_KINDS`.
 2. Add its allowed set to `validAttributes`.
 3. Add a `buildItem` case in `items.ts`, with its defaults and its error messages.
-4. Extend `validateSequence` if it constrains where it may sit.
-5. Add a renderer and register it in `KINDS` in `packages/view/src/components/form/items.tsx`
+4. Put it in `ANSWERING_KINDS` or `CONTENT_KINDS` — the six kinds split three and three, by
+   whether the kind captures something from the participant and therefore submits.
+   `validateSequence` refuses an activity holding no answering kind, so a content-only kind
+   added to the wrong list makes such an activity compile.
+5. Extend `validateSequence` if it constrains where it may sit.
+6. Add a renderer and register it in `KINDS` in `packages/view/src/components/form/items.tsx`
    — not in `Form.tsx`, which chooses nothing by name. Test the registry entry in
-   `kinds.test.ts`; there is no DOM to render into.
-6. Extend `spec/schema.json`: a `$defs` entry **and** the `oneOf` in `activity.items`.
-7. Document it in `spec/instructions.md` (the container table **and** the generated Functions
+   `kinds.test.ts`; there is no DOM to render into. If it reads something new off the frame,
+   add that to `Frame` in `packages/view/src/lib/service.ts`.
+7. Extend `spec/schema.json`: a `$defs` entry **and** the `oneOf` in `activity.items`.
+8. Document it in `spec/instructions.md` (the container table **and** the generated Functions
    table) and in `spec/spec.md`, each with a compiling example.
-8. Add prompts to `examples.md` as a new numbered category, updating the range and the count.
-9. Extend `supported_item_types` in `spec/language-info.json` and revisit `scope.json`.
+9. Add prompts to `examples.md` as a new numbered category, updating the range and the count.
+10. Extend `supported_item_types` in `spec/language-info.json` and revisit `scope.json`.
 
 ## Back-port surface (for L0180)
 
