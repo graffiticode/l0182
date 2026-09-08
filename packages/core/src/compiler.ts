@@ -205,6 +205,40 @@ Transformer.prototype.ITEMS = function (this: any, node: any, options: any, resu
 };
 
 /**
+ * Compiled data is stored as the `{ data, errors }` envelope a language server returns — this
+ * compiler's own api package builds one — so what comes back as `options.data` on the next
+ * round trip is the envelope, not the model that was put in.
+ *
+ * Spreading that envelope buried the participant's response one level down as
+ * `{ data: { response }, errors: [] }`, where `Form.tsx` (`state.data.response`) cannot see it.
+ * The visible symptom is a survey that does not resume after a reload — the exact guarantee
+ * `submission "individual"` exists to make — with nothing logged and no error anywhere: the
+ * response IS stored, at a depth nothing reads.
+ *
+ * Unwrapped in a loop rather than once because storage has been observed adding a second layer
+ * after the first round trip. `l0000-view` normalises the same shape before its Form sees it,
+ * and `graffiticode-mcp-server` had to learn it too — reading `.activity` off an unwrapped
+ * envelope rejected every survey ever authored as "not a survey".
+ *
+ * A model that genuinely holds a `data` key beside an `errors` ARRAY would be unwrapped by
+ * mistake. Nothing in this language emits that shape: the compiler's own keys are `activity`,
+ * and the client's is `response`.
+ */
+const unwrapEnvelope = (value: any): any => {
+  let out = value;
+  while (
+    out &&
+    typeof out === "object" &&
+    !Array.isArray(out) &&
+    Array.isArray(out.errors) &&
+    "data" in out
+  ) {
+    out = out.data;
+  }
+  return out && typeof out === "object" && !Array.isArray(out) ? out : {};
+};
+
+/**
  * The program's value is its last expression.
  *
  * `data` is spread FIRST so the fresh compile wins. It carries the participant's response, but
@@ -216,7 +250,7 @@ Transformer.prototype.ITEMS = function (this: any, node: any, options: any, resu
  */
 Transformer.prototype.PROG = function (this: any, node: any, options: any, resume: any) {
   this.visit(node.elts[0], options, (e0: any, v0: any) => {
-    const data = options?.data || {};
+    const data = unwrapEnvelope(options?.data);
     const val = v0.pop();
     const isObject = typeof val === "object" && val !== null && !Array.isArray(val);
     resume(e0, isObject ? { ...data, ...val } : val);

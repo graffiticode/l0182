@@ -213,6 +213,17 @@ compiled one would render a stale activity forever. L0179 spreads the other way 
 learner edits live inside the compiled structure); L0181 also spreads data last, which is right
 for its deck and **wrong here**. A response is a separate key the compiler never emits.
 
+**It also unwraps the `{data, errors}` envelope before spreading, and must.** What comes back
+as `options.data` on a round trip is not the model that went in: compiled data is stored as the
+envelope `compile.ts` returns, so spreading it raw buried the response as
+`{data: {response}, errors: []}` — one level below where `Form.tsx` reads `state.data.response`.
+The response was stored correctly and read by nothing, so a survey silently failed to resume,
+which is the one guarantee `submission "individual"` exists to make. Storage has been observed
+adding a second layer after the first round trip, so the unwrap loops. This is the third place
+this envelope has drawn blood — `l0000-view` normalises it in `ne()`, and
+`graffiticode-mcp-server` rejected every survey as "not a survey" for reading `.activity` off
+it — so assume any `data` crossing a storage boundary is wrapped until proven otherwise.
+
 ### What `app.ts` serves, and why the order and the headers are load-bearing
 
 Four rules, three of which are shipped bug fixes. Changing any of them looks harmless locally,
