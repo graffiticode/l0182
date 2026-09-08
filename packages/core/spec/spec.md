@@ -123,13 +123,13 @@ survey [
   ]
   max-choices 2
   response [
-    selection [2 0]
+    selection ["affordable housing" "protect voting rights"]
     idea "ranked-choice voting"
   ]
 ]..
 ```
 
-`selection` names the ideas chosen, never their text, and **the order is the ranking** — first is
+`selection` names the ideas chosen, and **the order is the ranking** — first is
 most important. No idea may appear twice.
 
 An idea may be named three ways: by **its exact text**, by **its id**, or by **its position,

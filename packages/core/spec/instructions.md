@@ -113,7 +113,7 @@ survey [
   name "priorities"
   ideas ["clean air and water" "affordable housing" "invest in public transit"]
   response [
-    selection [2 0]
+    selection ["invest in public transit" "clean air and water"]
     idea "protect public lands from being sold off"
   ]
 ]..
@@ -193,7 +193,7 @@ Every word L0182 adds to the base language. All are arity 1.
 | `ideas`       | `<list: record>`   |   1   | The set of ideas this response is chosen from, written at code generation. Each entry is a line of text, or a record naming the service's own id: ideas ["…" {id: "a3" text: "…"}].                |
 | `min-choices` | `<number: record>` |   1   | Fewest ideas a response may select. Defaults to 1.                                                                                                                                                 |
 | `max-choices` | `<number: record>` |   1   | Most ideas a response may select. Defaults to the number of ideas.                                                                                                                                 |
-| `selection`   | `<list: record>`   |   1   | The ideas chosen, in priority order — the order IS the ranking, first is most important. Each entry is an idea's id in quotes, or its position as a whole number counting from 0: selection [2 0]. |
+| `selection`   | `<list: record>`   |   1   | The ideas chosen, in priority order — the order IS the ranking, first is most important. Name each one by its exact text: selection ["clean air and water" "affordable housing"]. An id in quotes works too, and a bare whole number is a position counting from 0 — but reach for those only when you can see the set, because a wrong position records the wrong idea and still compiles. |
 | `idea`        | `<string: record>` |   1   | One new idea, contributed by whoever answered. It must not repeat an idea already in the set — that is what makes it new.                                                                          |
 | `survey`      | `<list: record>`   |   1   | A named set of ideas to choose from, and optionally the response to it.                                                                                                                            |
 | `response`    | `<list: record>`   |   1   | The ideas chosen, in priority order, and optionally one new idea that was not in the set.                                                                                                          |
@@ -209,7 +209,7 @@ survey [
   min-choices 1
   max-choices 5
   response [
-    selection [2 0]
+    selection ["invest in public transit" "protect voting rights"]
     idea "make public transit free at the point of use"
   ]
 ]..

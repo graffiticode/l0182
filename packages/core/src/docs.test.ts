@@ -21,27 +21,20 @@ import { compiler, lexicon, setFetcher, validAttributes } from "./index.js";
 // Documented programs use the real `fetch` form, because that is what an author writes and what
 // the generator learns from. Serving them from a stub is what keeps this gate a test of our
 // parser and our prose rather than of a third party's uptime.
-setFetcher(
-  async () =>
-    ({
-      ok: true,
-      status: 200,
-      headers: { get: () => "application/json" },
-      text: async () =>
-        JSON.stringify([
-          { id: "a3", text: "protect voting rights" },
-          { id: "b7", text: "universal healthcare system" },
-          { id: "c1", text: "protect public lands and waters from being sold off" },
-          { id: "d9", text: "affordable housing" },
-          { id: "e4", text: "remove profit from healthcare" },
-          { id: "f2", text: "end Citizens United" },
-          { id: "g8", text: "mitigate climate change" },
-          { id: "h5", text: "clean air and water" },
-          { id: "j7", text: "lower prescription drug prices" },
-          { id: "k1", text: "strengthen public schools" },
-        ]),
-    }) as any,
-);
+// The stub serves the sample dataset the URL actually names, read from spec/. An inline copy
+// drifted from the file it stood in for — ten ideas against the real twelve — so an example
+// naming a real idea by its text failed here while compiling fine against the live address.
+setFetcher(async (input) => {
+  const name = String(input).split("/").pop() || "ideas.json";
+  const body = readFileSync(join("spec", name), "utf-8");
+  const type = name.endsWith(".csv") ? "text/csv" : "application/json";
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: () => type },
+    text: async () => body,
+  } as any;
+});
 
 /** Files whose fenced blocks are programs. examples.md holds prompts and is checked separately. */
 const SPEC_FILES = ["spec/spec.md", "spec/instructions.md"];
