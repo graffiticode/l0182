@@ -69,7 +69,7 @@ function assertFetchable(raw: string): URL {
   } catch {
     throw new Error(
       `fetch: ${JSON.stringify(raw)} is not a URL. Give the full address of the dataset, ` +
-        'e.g. fetch "https://example.org/surveys/you-can-choose/ideas.json".',
+        'e.g. fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json".',
     );
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") {

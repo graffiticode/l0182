@@ -250,4 +250,12 @@ describe("what the fetch refuses to reach", () => {
   it("refuses something that is not a URL at all", async () => {
     expect(await errorOf(SRC("ideas.json"))).toContain("is not a URL");
   });
+
+  it("shows a real address in that message, not a placeholder", async () => {
+    // The generator reads a compile error and retries against it, so an example URL here is one
+    // it will copy. example.org/... 404s, which turns a fixable error into a different one.
+    const msg = await errorOf(SRC("ideas.json"));
+    expect(msg).toContain("raw.githubusercontent.com/graffiticode/l0182");
+    expect(msg).not.toContain("example.org");
+  });
 });

@@ -71,7 +71,7 @@ Transformer.prototype.FETCH = function (this: any, node: any, options: any, resu
     if (typeof v0 !== "string" || !v0.trim()) {
       resume(
         err.concat(
-          'fetch: expected a URL in "quotes", e.g. fetch "https://example.org/ideas.json".',
+          'fetch: expected a URL in "quotes", e.g. fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json".',
         ),
         [],
       );
