@@ -72,6 +72,34 @@ describe("fetching a JSON dataset", () => {
     ]);
   });
 
+  it("lets a fetched set be selected from BY TEXT, which is the only key the author knows", async () => {
+    // The whole point. Code generation writes the response before the program has ever compiled,
+    // so it has seen the URL and nothing else — no ids, no positions. Naming a position here is
+    // a guess, and a guess in range compiles clean and records the wrong ideas.
+    serve([
+      { id: "a3", text: "protect voting rights" },
+      { id: "d9", text: "affordable housing" },
+      { id: "h5", text: "clean air and water" },
+    ]);
+    const out = await compile(
+      `survey [ name "n" ideas fetch "https://example.org/ideas.json"
+         response [ selection ["affordable housing" "clean air and water"] ] ]`,
+    );
+    expect(out.response.selection).toEqual(["d9", "h5"]);
+  });
+
+  it("refuses text the fetched set does not contain, rather than recording something else", async () => {
+    serve([
+      { id: "a3", text: "protect voting rights" },
+      { id: "d9", text: "affordable housing" },
+    ]);
+    const msg = await errorOf(
+      `survey [ name "n" ideas fetch "https://example.org/ideas.json"
+         response [ selection ["cheaper housing"] ] ]`,
+    );
+    expect(msg).toContain("not an idea in this survey");
+  });
+
   it("lets a fetched set be selected from, by id or by position", async () => {
     serve([
       { id: "a3", text: "one" },

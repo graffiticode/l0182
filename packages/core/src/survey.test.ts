@@ -157,15 +157,13 @@ describe("the response", () => {
     expect(out.response).toEqual({ selection: [], idea: "ranked-choice voting" });
   });
 
-  it("refuses an id that is not in the set, and lists the ids that are", async () => {
+  it("refuses a name that matches nothing, and lists all three ways to name an idea", async () => {
     const msg = await errorOf(survey(`${IDEAS} response [ selection ["i9"] ]`));
     expect(msg).toContain('entry 1 is "i9"');
-    expect(msg).toContain("The ids are: i0, i1, i2");
-  });
-
-  it("offers positions in that message, since they are always available", async () => {
-    const msg = await errorOf(survey(`${IDEAS} response [ selection ["i9"] ]`));
-    expect(msg).toContain("named by its position, counting from 0");
+    expect(msg).toContain("not an idea in this survey");
+    expect(msg).toContain("by its exact text");
+    expect(msg).toContain("by its id (i0, i1, i2)");
+    expect(msg).toContain("position counting from 0");
   });
 
   it("refuses the same id twice", async () => {
@@ -206,6 +204,68 @@ describe("the response", () => {
   it("refuses an empty new idea rather than storing a blank one", async () => {
     const msg = await errorOf(survey(`${IDEAS} response [ selection ["i0"] idea "  " ]`));
     expect(msg).toContain("`idea` is empty");
+  });
+});
+
+describe("selecting by text", () => {
+  // The only notation that works when the ideas were FETCHED: the set does not exist until the
+  // program compiles, so whoever writes the response has never seen an id or a position. Without
+  // this the generator guesses, and a guess that lands in range compiles clean and records the
+  // wrong ideas — which is exactly what shipped before this existed.
+  it("resolves an idea's text to its id", async () => {
+    const out = await compile(
+      survey(`${IDEAS} response [ selection ["affordable housing" "protect voting rights"] ]`),
+    );
+    expect(out.response.selection).toEqual(["i2", "i0"]);
+  });
+
+  it("is forgiving about case and surrounding space, but not about the words", async () => {
+    const out = await compile(survey(`${IDEAS} response [ selection ["  Affordable Housing "] ]`));
+    expect(out.response.selection).toEqual(["i2"]);
+    expect(await errorOf(survey(`${IDEAS} response [ selection ["affordable house"] ]`))).toContain(
+      "not an idea in this survey",
+    );
+  });
+
+  it("collapses runs of whitespace, so a reflowed line still matches", async () => {
+    const out = await compile(
+      survey(`${IDEAS} response [ selection ["universal    healthcare\n  system"] ]`),
+    );
+    expect(out.response.selection).toEqual(["i1"]);
+  });
+
+  it("mixes text with ids and positions in one selection", async () => {
+    const out = await compile(
+      survey(`ideas [ {id: "a3" text: "one"} {id: "b7" text: "two"} {id: "c1" text: "three"} ]
+        response [ selection ["three" "a3" 1] ]`),
+    );
+    expect(out.response.selection).toEqual(["c1", "a3", "b7"]);
+  });
+
+  it("prefers an id over text when a string could be read as either", async () => {
+    // An id is the canonical key. A set whose id reads as another idea's text has bigger
+    // problems, but the rule has to be stated somewhere, so it is stated here.
+    const out = await compile(
+      survey(`ideas [ {id: "housing" text: "transit"} {id: "b7" text: "housing"} ]
+        response [ selection ["housing"] ]`),
+    );
+    expect(out.response.selection).toEqual(["housing"]);
+  });
+
+  it("catches the same idea named once by text and once by id", async () => {
+    const msg = await errorOf(
+      survey(`${IDEAS} response [ selection ["affordable housing" "i2"] ]`),
+    );
+    expect(msg).toContain('names "i2" twice');
+  });
+
+  it("refuses text that two ideas share once case is folded", async () => {
+    const msg = await errorOf(
+      survey(`ideas [ {id: "a3" text: "Housing"} {id: "b7" text: "housing"} ]
+        response [ selection ["housing"] ]`),
+    );
+    expect(msg).toContain("the text of more than one idea");
+    expect(msg).toContain("Name the idea's id instead");
   });
 });
 

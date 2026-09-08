@@ -128,12 +128,20 @@ survey [
 `selection` names the ideas chosen, never their text, and **the order is the ranking** — first is
 most important. No idea may appear twice.
 
-An idea may be named **by its id in quotes** — `selection ["b7" "a3"]` — or **by its position,
-counting from 0** — `selection [2 0]` is the third idea then the first. Both work for any set. A
-number is always a position and a string is always an id, so the two cannot be confused even when
-a set's ids look like numbers: `selection [1]` is the second idea, `selection ["1"]` is the idea
-whose id is `1`. Either way the compiled record carries ids, so the two forms differ only in the
+An idea may be named three ways: by **its exact text**, by **its id**, or by **its position,
+counting from 0**. All three resolve to ids in the compiled record, so they differ only in the
 source.
+
+Which to use is not a matter of taste. When the ideas were **fetched**, the set does not exist
+until the program compiles — so whoever writes the response has not seen the ids or the positions,
+and the text is the only thing they can know. Naming a position there is a guess, and a guess that
+lands in range compiles cleanly and records the wrong ideas. When the set is **written out**, or
+has been read back after compiling, the id is the better key: it survives the set being reordered.
+
+Text matching ignores case and surrounding whitespace. A number is always a position and a string
+never is, so those cannot collide even when a set's ids look like numbers — `selection [1]` is the
+second idea, `selection ["1"]` is the idea whose id is `1`. Between the two string forms, an id
+wins.
 
 `idea` is one new idea, contributed by whoever answered. It must not repeat an idea already in
 the set; that is what makes it new. It may stand alone, with nothing selected.

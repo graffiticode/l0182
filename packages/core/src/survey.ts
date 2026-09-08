@@ -131,40 +131,79 @@ function resolveBounds(
   return { minChoices, maxChoices };
 }
 
+/** Loosen a text match: trim, fold case, collapse whitespace. */
+const normaliseText = (t: string): string => t.trim().toLowerCase().replace(/\s+/g, " ");
+
+/**
+ * How a `selection` entry finds its idea.
+ *
+ * Built once per response, because text matching needs to know when a key is ambiguous rather
+ * than discovering it per lookup.
+ */
+interface Index {
+  byId: Map<string, Idea>;
+  /** Normalised text -> the idea, or null when more than one idea normalises to it. */
+  byText: Map<string, Idea | null>;
+}
+
+function indexOf(survey: Survey): Index {
+  const byId = new Map(survey.ideas.map((i) => [i.id, i]));
+  const byText = new Map<string, Idea | null>();
+  for (const idea of survey.ideas) {
+    const key = normaliseText(idea.text);
+    byText.set(key, byText.has(key) ? null : idea);
+  }
+  return { byId, byText };
+}
+
 /**
  * Resolve one `selection` entry to an idea id.
  *
- * A number is a position, a string is an id, and the two can never be confused for one another
- * because an id is always a string — even for a set whose ids happen to look like numbers, where
- * `selection [1]` is the second idea and `selection ["1"]` is the idea called "1". That is why
- * positions stay legal for a set that carries the service's own ids: the notation says which is
- * meant, so nothing is ambiguous, and an author reading a list of ten ideas should not have to
- * copy an opaque id to point at the third one.
+ * Three notations, because three different callers need three different things:
  *
- * A position is 0-based, matching the ids the language derives for a set that has none (`i0`
- * upward). Both messages say so outright, because an off-by-one here does not fail — it records
- * a different ranking than the one that was meant, which is the kind of wrong that looks right.
+ * - **Its text.** The only one that works when the ideas were FETCHED. A program says
+ *   `ideas fetch "<url>"`, so the set does not exist until the program compiles — which means
+ *   whoever writes the response, a person or the code generator, has never seen the ids or the
+ *   positions. Without this the generator guesses, and a guess that lands in range compiles
+ *   clean and records the wrong ideas. That is not hypothetical: it shipped, and this is the fix.
+ * - **Its id.** What a client that already read the compiled set should use — it is the key the
+ *   originating service knows, and it survives the set being reordered.
+ * - **Its position**, 0-based, matching the ids the language derives for a set that has none.
+ *
+ * A number is always a position and a string is never one, so those cannot collide. Between the
+ * two string forms, an id wins: it is the canonical key, and an id that also reads as an idea's
+ * text is a set that has bigger problems.
  */
-function resolveRef(ref: string | number, at: number, survey: Survey): string {
+function resolveRef(ref: string | number, at: number, survey: Survey, index: Index): string {
+  const where = `response: \`selection\` entry ${at + 1}`;
+
   if (typeof ref === "number") {
     if (ref < 0 || ref >= survey.ideas.length) {
       throw new Error(
-        `response: \`selection\` entry ${at + 1} is the position ${ref}, but this survey has ` +
-          `${survey.ideas.length} ideas. Positions count from 0, so the last one is ` +
-          `${survey.ideas.length - 1}.`,
+        `${where} is the position ${ref}, but this survey has ${survey.ideas.length} ideas. ` +
+          `Positions count from 0, so the last one is ${survey.ideas.length - 1}.`,
       );
     }
     return survey.ideas[ref].id;
   }
 
-  if (!survey.ideas.some((x) => x.id === ref)) {
+  if (index.byId.has(ref)) return ref;
+
+  const key = normaliseText(ref);
+  if (index.byText.has(key)) {
+    const idea = index.byText.get(key);
+    if (idea) return idea.id;
     throw new Error(
-      `response: \`selection\` entry ${at + 1} is ${JSON.stringify(ref)}, which is not an idea in ` +
-        `this survey. The ids are: ${survey.ideas.map((x) => x.id).join(", ")}. ` +
-        "An idea can also be named by its position, counting from 0.",
+      `${where} is ${JSON.stringify(ref)}, which is the text of more than one idea in this ` +
+        "survey, so it does not say which. Name the idea's id instead.",
     );
   }
-  return ref;
+
+  throw new Error(
+    `${where} is ${JSON.stringify(ref)}, which is not an idea in this survey. Name an idea by ` +
+      `its exact text, by its id (${survey.ideas.map((x) => x.id).join(", ")}), or by its ` +
+      "position counting from 0.",
+  );
 }
 
 /**
@@ -176,14 +215,16 @@ function resolveRef(ref: string | number, at: number, survey: Survey): string {
  */
 function resolveResponse(authored: AuthoredResponse, survey: Survey): SurveyResponse {
   const { idea } = authored;
+  const index = indexOf(survey);
   const selection: string[] = [];
   const seen = new Set<string>();
 
   authored.selection.forEach((ref, i) => {
-    const id = resolveRef(ref, i, survey);
+    const id = resolveRef(ref, i, survey, index);
     if (seen.has(id)) {
-      // Reported by id rather than as written, because `selection ["i0" 0]` names the same idea
-      // twice in two notations and saying so is the whole point of the message.
+      // Reported by id rather than as written, because `selection ["i0" 0]` — or an id beside
+      // the same idea's text — names one idea twice in two notations, and saying which idea it
+      // is is the whole point of the message.
       throw new Error(
         `response: \`selection\` names ${JSON.stringify(id)} twice. An idea holds one place in the ` +
           "order, so each id may appear once.",

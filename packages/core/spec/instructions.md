@@ -114,15 +114,29 @@ survey [
 ]..
 ```
 
-- `selection` names the ideas chosen, never their text, and **the order is the ranking** — first
-  is most important. No idea may appear twice.
-- An idea may be named **by its id in quotes** — `selection ["b7" "a3"]` — or **by its position,
-  counting from 0** — `selection [2 0]` is the third idea then the first. Both work for any set.
-- A number is always a position and a string is always an id, so the two can never be confused,
-  even for a set whose ids look like numbers: `selection [1]` is the second idea, `selection ["1"]`
-  is the idea whose id is `1`.
-- Prefer positions when the set is plain strings — the language numbers those ideas `i0`, `i1`, …
-  itself, so writing `"i2"` spells out a number it already knows.
+- `selection` names the ideas chosen, and **the order is the ranking** — first is most important.
+  No idea may appear twice.
+- **When the ideas were fetched, name them by their exact text.** This is the important rule.
+  `ideas fetch "<url>"` means the set does not exist until the program compiles, so you have not
+  seen the ids or the positions and cannot know them. Guessing a position compiles cleanly and
+  records the WRONG ideas:
+
+```
+survey [
+  name "priorities"
+  ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json"
+  max-choices 3
+  response [ selection ["affordable housing" "clean air and water"] ]
+]..
+```
+
+- **When you can see the set** — you wrote it out, or you read it back after compiling — name an
+  idea by **its id** (`selection ["b7" "a3"]`) or **its position, counting from 0**
+  (`selection [2 0]` is the third idea then the first).
+- Text matching ignores case and surrounding space, but the words must be the idea's own.
+- A number is always a position and a string is never one, so those cannot be confused even for a
+  set whose ids look like numbers: `selection [1]` is the second idea, `selection ["1"]` is the
+  idea whose id is `1`. Between the two string forms an id wins.
 - `idea` is one new idea from whoever answered. It must NOT repeat an idea already in the set —
   that is what makes it new. It may stand alone, with nothing selected.
 

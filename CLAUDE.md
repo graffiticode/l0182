@@ -162,23 +162,30 @@ diagnostic. Every message names the fix:
 The tests assert on that text, not merely that compilation failed. A message that stops naming
 the fix is a regression even when the program still errors.
 
-### A selection names an idea by id or by position, and both always work
+### A selection names an idea by text, by id, or by position
 
-`selection` takes an id (a string) or a **0-based position** (a number), and `resolveResponse`
-normalises both to ids before they reach the output — so the compiled record is identical either
-way and the input form costs nothing downstream.
+`selection` takes any of the three, and `resolveResponse` normalises all of them to ids before
+they reach the output — so the compiled record is identical whichever was written and the input
+form costs nothing downstream.
 
-Two things about the rule are load-bearing:
+**Text is not a convenience. It is the only notation that works for a fetched set**, and leaving
+it out was a real bug rather than a missing nicety. A program says `ideas fetch "<url>"`, so the
+set does not exist until the program compiles — which means whoever writes the response, a person
+or the code generator, has never seen an id or a position. A guessed position that lands in range
+compiles cleanly and records the wrong ideas, silently. That shipped: an `update_item` asking for
+three ideas by name produced `selection [2 3 5]` and recorded three different ones.
 
-- **The notation is what distinguishes them**, not the survey. A string is always an id and a
-  number is always a position, which holds even for a set whose ids look like numbers:
-  `selection [1]` is the second idea, `selection ["1"]` is the idea called `1`. That is why
-  positions stay legal for a set carrying the service's own ids — nothing is ambiguous, and an
-  author reading ten ideas should not have to copy an opaque id to point at the third.
-- **0-based, not 1-based**, because the language already derives `i0`, `i1`, … by position for a
-  set that has none — a position _is_ the number in the derived id, and making the two disagree
-  would be gratuitous. The range message says where counting starts, because an off-by-one here
-  does not fail: it records a different ranking than the one that was meant.
+Three smaller rules hold it together:
+
+- **A number is always a position, a string never is**, so those cannot collide even for a set
+  whose ids look like numbers: `selection [1]` is the second idea, `selection ["1"]` is the idea
+  called `1`. Between the two string forms an id wins — it is the canonical key.
+- **Text matching folds case, trims, and collapses whitespace**, because a generator reflows
+  lines. Two ideas that normalise to the same key make that key ambiguous, and it is refused by
+  name rather than resolved to the first.
+- **0-based positions**, matching the ids the language derives for a set that has none — a
+  position *is* the number in the derived id. The range message says where counting starts,
+  because an off-by-one records a different ranking rather than failing.
 
 ### `fetch` is L0182's own, and narrower than L0170's on purpose
 

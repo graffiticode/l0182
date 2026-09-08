@@ -198,7 +198,10 @@ export function checkValue(name: string, meta: AttributeMeta, raw: any): string 
     // meant. Resolving them needs the ideas in hand, so that happens in `survey.ts`; here we only
     // reject an entry that is neither form.
     if (!Array.isArray(raw) || !raw.length) {
-      return `${word}: expected a list of ideas, by id or by position, e.g. ${word} ["i0" "i2"] or ${word} [0 2].`;
+      return (
+        `${word}: expected a list of ideas — each named by its text, its id, or its position, ` +
+        `e.g. ${word} ["clean air and water" "affordable housing"].`
+      );
     }
     const bad = raw.findIndex(
       (v) =>
