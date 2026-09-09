@@ -267,12 +267,66 @@ Changing any of them looks harmless locally, where there is no CDN and no cross-
   while every visitor keeps running the previous build — a failure that looks exactly like a
   successful deploy. `no-cache` alone was not enough behind Cloudflare, which served a HIT with
   `age: 1191` and rewrote the header, so `/form` goes out with `Cache-Control`,
-  `CDN-Cache-Control` **and** `Cloudflare-CDN-Cache-Control` all `no-store`.
+  `CDN-Cache-Control` **and** `Cloudflare-CDN-Cache-Control` all `no-store`. **Those three
+  headers are necessary and NOT sufficient** — see below.
 - **`Cross-Origin-Resource-Policy: cross-origin` on every response.** Without it a COEP-isolated
   host — the claude.ai and chatgpt.com widget iframes — blocks the `/form` frame outright.
 - **`GET /lexicon.js` is aliased to `lexicon.json`** for the still-deployed console, which
   slices from the first `{` and parses. No `lexicon.js` is emitted; drop the alias once the
   console migrates (Stage 3).
+
+### The `/form` headers cannot win on their own — the zone overrides them
+
+The three `no-store` headers above are what the origin can do, and the origin does it correctly.
+The Cloudflare zone in front of it ignores them. Verified 2026-09-08, after a deploy that
+shipped a CSS change: `https://l0182.graffiticode.org/form` answered `cf-cache-status: HIT` with
+`age: 2009`, naming the **previous** bundle, and its `cache-control` came back rewritten to
+`max-age=3600, must-revalidate` — while `cdn-cache-control: no-store` passed through untouched,
+which is the tell that the rewrite is the zone's and not ours.
+
+That does damage twice, and the second one is the one that surprises:
+
+- The edge serves a stale HTML shell naming the previous bundle. Both bundles are present, so
+  nothing 404s and nothing looks broken — the old build simply keeps running.
+- The rewritten `max-age=3600` then instructs **every visitor's browser** to hold that shell for
+  an hour. A purge clears Cloudflare's copy and **cannot reach that one**. This is not
+  theoretical: after a purge the page still rendered the old build until a hard reload.
+
+So a deploy that changes anything in the view is not visible until the zone is fixed, and
+**the fix is zone configuration, not code** — there is nothing left to change in `app.ts`:
+
+- A Cache Rule with action **Bypass cache**, matching:
+
+  ```
+  (ends_with(http.host, ".graffiticode.org") and starts_with(http.request.uri.path, "/form"))
+  ```
+
+  Scoped to every language host on purpose: the shell-naming-hashed-assets shape is shared, so
+  this is every language server's bug, not L0182's. Bypassing costs nothing — `/form` is a small
+  shell the origin already marks `no-store`, and `/assets/*` stays immutable, which is where the
+  bytes are.
+
+- **Browser Cache TTL → Respect Existing Headers** (Caching → Configuration). This is the half
+  that a purge cannot substitute for. Without it the rule above fixes only the edge.
+
+Verify with `curl -sI https://l0182.graffiticode.org/form`: it must say `cf-cache-status: BYPASS`
+(or `DYNAMIC`) **and** carry the origin's own `cache-control: no-store, no-cache,
+must-revalidate`. A `max-age=3600` there means the Browser Cache TTL half is still missing.
+
+Two things that cost time when diagnosing this, both worth knowing before you start:
+
+- **The console's iframe loads `l0182.graffiticode.org/form`, not `api.graffiticode.org`.**
+  `FormIFrame.tsx` builds an `api.graffiticode.org/form?…` URL that redirects to the language
+  host, and the two hostnames are separate cache entries — the api one can be fresh while the
+  one actually rendering is stale, which makes a spot-check on the wrong host look clean.
+- **The cache key ignores the query string**, so `?cb=1` is not a cache-buster; every iframe URL
+  shares one entry despite carrying a distinct `access_token` and `id`. A trailing slash
+  (`/form/`) _is_ a distinct key, which is useful for confirming what the origin would serve —
+  and useless as a fix, since the next deploy just makes that path stale too.
+
+The fastest discriminator is which asset filename the HTML names: compare the Cloud Run origin
+URL (`gcloud run services describe l0182 --format='value(status.url)'`) against the public
+hostname. Same name, the deploy is at fault; different names, it is the CDN.
 
 ## The view is a renderer, not a player
 
