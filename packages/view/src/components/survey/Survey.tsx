@@ -48,15 +48,13 @@ export const Survey = ({ state }: FormProps) => {
 
   return (
     <div className="l0182-survey mx-auto flex max-w-4xl flex-col gap-6 p-6">
-      <header className="flex flex-col gap-1">
+      {/* Title, then the author's own words, then — as the caption on the ideas panel — the
+          bounds line derived from min-choices/max-choices. `name` is deliberately absent: it is
+          the internal handle a response is keyed by, not something a participant should read,
+          and while it sat here it occupied the line the instructions belong on. */}
+      <header className="flex flex-col gap-2">
         {survey.title && <h1 className="text-lg font-semibold text-zinc-900">{survey.title}</h1>}
-        <p className="text-xs uppercase tracking-wide text-zinc-400">{survey.name}</p>
-        {/* Author's own words, between the title and the ideas. The bounds line that follows is
-            derived from the choice bounds (see boundsLabel), so the two do not restate one
-            another: this says what the survey is for, that says how many may be chosen. */}
-        {survey.instructions && (
-          <p className="mt-2 whitespace-pre-line text-sm text-zinc-600">{survey.instructions}</p>
-        )}
+        <p className="whitespace-pre-line text-sm text-zinc-600">{survey.instructions}</p>
       </header>
 
       {/* One column on a phone. This is published as an embed and renders inside other people's
