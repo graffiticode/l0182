@@ -45,6 +45,12 @@ export const attributeFields: Record<string, AttributeMeta> = {
     expects: "string",
     description: "The survey's title, shown above the ideas.",
   },
+  INSTRUCTIONS: {
+    field: "instructions",
+    expects: "string",
+    description:
+      "What the participant is asked to do, in your own words, shown under the title and above the ideas. The bounds line beneath it is derived from min-choices and max-choices, so instructions should say what the survey is FOR rather than restate the count.",
+  },
   IDEAS: {
     field: "ideas",
     expects: "ideas",
@@ -90,7 +96,7 @@ export const typeOf = (meta: AttributeMeta): string =>
  * a record nothing reads, compiles clean, and silently does not do what it says.
  */
 export const validAttributes: Record<string, string[]> = {
-  survey: ["name", "title", "ideas", "min-choices", "max-choices", "response"],
+  survey: ["name", "title", "instructions", "ideas", "min-choices", "max-choices", "response"],
   response: ["selection", "idea"],
 };
 
@@ -181,14 +187,30 @@ const checkIdea = (raw: any, at: number): string | null => {
  * never. L0166 shipped a Checker rule rejecting negative points that did nothing for exactly
  * this reason.
  */
+/**
+ * A fetched dataset that carries its own `title`/`instructions` alongside its ideas.
+ *
+ * Recognised by having an `ideas` array — a bare list has no keys at all — so a plain array
+ * dataset and an envelope can never be confused, and a JSON file that happens to be an object
+ * without `ideas` still fails with the ordinary "expected a list of ideas" error.
+ */
+export function isIdeaEnvelope(raw: any): raw is { title?: string; instructions?: string; ideas: any[] } {
+  return !!raw && !Array.isArray(raw) && typeof raw === "object" && Array.isArray((raw as any).ideas);
+}
+
 export function checkValue(name: string, meta: AttributeMeta, raw: any): string | null {
   const word = wordOf(name);
   if (meta.expects === "ideas") {
-    if (!Array.isArray(raw) || !raw.length) {
+    // A fetched dataset may arrive as an envelope — `{title, instructions, ideas: [...]}` — so
+    // that the set carries the words a participant reads along with the ideas themselves. Only
+    // `fetch` produces one; an authored `ideas [...]` is always the bare list. Unwrap before
+    // checking so both forms hit the identical per-idea validation below.
+    const list = isIdeaEnvelope(raw) ? raw.ideas : raw;
+    if (!Array.isArray(list) || !list.length) {
       return `${word}: expected a list of ideas, e.g. ideas ["clean air and water" "affordable housing"].`;
     }
-    for (let i = 0; i < raw.length; i++) {
-      const bad = checkIdea(raw[i], i);
+    for (let i = 0; i < list.length; i++) {
+      const bad = checkIdea(list[i], i);
       if (bad) return bad;
     }
     return null;

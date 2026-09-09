@@ -1,6 +1,8 @@
 survey [
   name "you-can-choose"
   title "You Can Choose"
+  instructions "Below is a list of things people have said they'd like their representatives to
+    focus on. Please click to select the issues that matter most to you."
   ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json"
   response [
     selection ["affordable housing" "clean air and water"]

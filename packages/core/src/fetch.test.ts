@@ -177,9 +177,46 @@ describe("a host that types everything text/plain", () => {
   });
 });
 
+describe("a dataset that carries its own title and instructions", () => {
+  // The envelope form. A published set knows what it is for, so it can supply the words a
+  // participant reads and a one-line program still renders a page with a heading.
+  it("lifts title and instructions off the dataset", async () => {
+    serve({
+      title: "What Matters Most?",
+      instructions: "Pick the issues that matter most to you.",
+      ideas: ["clean air and water", "affordable housing"],
+    });
+    const out = await compile(SRC());
+    expect(out.survey.title).toBe("What Matters Most?");
+    expect(out.survey.instructions).toBe("Pick the issues that matter most to you.");
+    expect(out.survey.ideas).toHaveLength(2);
+  });
+
+  it("an envelope may carry ideas alone", async () => {
+    serve({ ideas: ["clean air and water", "affordable housing"] });
+    const out = await compile(SRC());
+    expect(out.survey.ideas).toHaveLength(2);
+    expect(out.survey.title).toBeUndefined();
+  });
+
+  it("what the program writes beats what the dataset says", async () => {
+    serve({
+      title: "Dataset Title",
+      instructions: "Dataset instructions.",
+      ideas: ["clean air and water", "affordable housing"],
+    });
+    const out = await compile(
+      'survey [ name "you-can-choose" title "Author Title" ideas fetch "https://example.org/ideas.json" ]',
+    );
+    expect(out.survey.title).toBe("Author Title");
+    // Untouched by the author, so the dataset's still stands.
+    expect(out.survey.instructions).toBe("Dataset instructions.");
+  });
+});
+
 describe("when the dataset is not a set of ideas", () => {
   it("reports it as `ideas`, which is the word the author has to fix", async () => {
-    serve({ ideas: ["one", "two"] });
+    serve({ survey: ["one", "two"] });
     const msg = await errorOf(SRC());
     expect(msg).toContain("ideas: expected a list of ideas");
   });

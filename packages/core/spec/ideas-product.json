@@ -1,11 +1,42 @@
-[
-  { "id": "f-104", "text": "offline mode that syncs when you reconnect" },
-  { "id": "f-118", "text": "keyboard shortcuts for every common action" },
-  { "id": "f-131", "text": "export to CSV and PDF" },
-  { "id": "f-142", "text": "a dark theme that respects the system setting" },
-  { "id": "f-157", "text": "share a read-only link without an account" },
-  { "id": "f-163", "text": "search across everything, not just the current page" },
-  { "id": "f-170", "text": "undo, on everything, for at least a day" },
-  { "id": "f-186", "text": "single sign-on for teams" },
-  { "id": "f-199", "text": "an audit log of who changed what" }
-]
+{
+  "title": "What Should We Build Next?",
+  "instructions": "These are the features our customers have asked for most often. Choose the ones that would make the biggest difference to your work, most important first.",
+  "ideas": [
+    {
+      "id": "f-104",
+      "text": "offline mode that syncs when you reconnect"
+    },
+    {
+      "id": "f-118",
+      "text": "keyboard shortcuts for every common action"
+    },
+    {
+      "id": "f-131",
+      "text": "export to CSV and PDF"
+    },
+    {
+      "id": "f-142",
+      "text": "a dark theme that respects the system setting"
+    },
+    {
+      "id": "f-157",
+      "text": "share a read-only link without an account"
+    },
+    {
+      "id": "f-163",
+      "text": "search across everything, not just the current page"
+    },
+    {
+      "id": "f-170",
+      "text": "undo, on everything, for at least a day"
+    },
+    {
+      "id": "f-186",
+      "text": "single sign-on for teams"
+    },
+    {
+      "id": "f-199",
+      "text": "an audit log of who changed what"
+    }
+  ]
+}

@@ -17,7 +17,7 @@
  * All validation runs in the TRANSFORMER. `Checker.LIST` visits only `elts[0]`, so a rule
  * written as a Checker method would fire on the first attribute and nowhere else.
  */
-import { Idea, assertKnownAttributes, mergeAttributes } from "./attributes.js";
+import { Idea, assertKnownAttributes, isIdeaEnvelope, mergeAttributes } from "./attributes.js";
 
 export interface SurveyResponse {
   /** Idea ids, in priority order. The order IS the ranking. */
@@ -41,6 +41,7 @@ export interface AuthoredResponse {
 export interface Survey {
   name: string;
   title?: string;
+  instructions?: string;
   ideas: Idea[];
   minChoices: number;
   maxChoices: number;
@@ -330,13 +331,22 @@ export function buildSurvey(raw: any): Compiled {
     );
   }
 
-  const ideas = normaliseIdeas(attrs.ideas as any[]);
+  // A fetched dataset may bring its own `title` and `instructions` (see `isIdeaEnvelope`). They
+  // are DEFAULTS: whoever wrote the program is closer to the audience than whoever published the
+  // dataset, so an authored value always wins. Writing neither is what lets a one-line program
+  // still render a page a person can read.
+  const envelope = isIdeaEnvelope(attrs.ideas) ? attrs.ideas : null;
+  const ideas = normaliseIdeas((envelope ? envelope.ideas : attrs.ideas) as any[]);
   assertIdeas(ideas);
   const { minChoices, maxChoices } = resolveBounds(attrs, ideas);
 
+  const title = attrs.title !== undefined ? attrs.title : envelope?.title;
+  const instructions = attrs.instructions !== undefined ? attrs.instructions : envelope?.instructions;
+
   const survey: Survey = {
     name: attrs.name,
-    ...(attrs.title !== undefined ? { title: attrs.title } : {}),
+    ...(title !== undefined ? { title } : {}),
+    ...(instructions !== undefined ? { instructions } : {}),
     ideas,
     minChoices,
     maxChoices,

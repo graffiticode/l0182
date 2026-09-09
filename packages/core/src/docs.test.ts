@@ -243,12 +243,25 @@ describe("the sample datasets", () => {
     .filter((f) => /^ideas.*\.(json|csv)$/.test(f))
     .sort();
 
+  /** The ideas themselves, whether the file is a bare list or an envelope carrying title/instructions. */
   const read = (f: string): any[] => {
     const text = readFileSync(join("spec", f), "utf-8");
-    if (f.endsWith(".json")) return JSON.parse(text);
+    if (f.endsWith(".json")) {
+      const parsed = JSON.parse(text);
+      return Array.isArray(parsed) ? parsed : parsed.ideas;
+    }
     const out = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
     return out.data as any[];
   };
+
+  /** The envelope keys, or null for a bare list. */
+  const envelope = (f: string): any =>
+    f.endsWith(".json")
+      ? (() => {
+          const p = JSON.parse(readFileSync(join("spec", f), "utf-8"));
+          return Array.isArray(p) ? null : p;
+        })()
+      : null;
 
   const literal = (entry: any) =>
     typeof entry === "string"
@@ -287,6 +300,25 @@ describe("the sample datasets", () => {
 
   test("ideas.json and ideas.csv are the same set, in the same order", () => {
     expect(read("ideas.csv")).toEqual(read("ideas.json"));
+  });
+
+  // The words a participant reads are part of the sample, not an afterthought: a prompt that
+  // points at a dataset and says nothing else must still produce a page with a heading and an
+  // explanation. A JSON sample that lost its envelope would silently go back to a bare list.
+  test("every JSON sample carries a title and instructions", () => {
+    const jsons = files.filter((f) => f.endsWith(".json"));
+    expect(jsons.length).toBeGreaterThan(3);
+    for (const f of jsons) {
+      const env = envelope(f);
+      expect(env, `${f} is a bare list, not an envelope`).not.toBeNull();
+      expect(typeof env.title, `${f} has no title`).toBe("string");
+      expect(env.title.trim().length, `${f} has an empty title`).toBeGreaterThan(0);
+      expect(typeof env.instructions, `${f} has no instructions`).toBe("string");
+      expect(
+        env.instructions.trim().length,
+        `${f} has empty instructions`,
+      ).toBeGreaterThan(20);
+    }
   });
 
   test("a CSV exercises a quoted field, because an idea will contain a comma", () => {

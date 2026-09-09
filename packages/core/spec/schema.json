@@ -19,6 +19,10 @@
           "description": "Shown above the ideas.",
           "type": "string"
         },
+        "instructions": {
+          "description": "What the participant is asked to do, shown under the title and above the ideas. The bounds line beneath it is derived from minChoices and maxChoices.",
+          "type": "string"
+        },
         "ideas": {
           "description": "The set a response is chosen from. Not authored by hand: inlined at code generation from what the service returned.",
           "type": "array",

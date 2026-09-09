@@ -17,6 +17,8 @@ One word, `survey`, applied to an attribute list.
 survey [
   name "you-can-choose"
   title "You Can Choose"
+  instructions "Below is a list of things people have said they'd like their representatives to
+    focus on. Please click to select the issues that matter most to you."
   ideas [
     "protect voting rights"
     "universal healthcare system"
@@ -26,13 +28,26 @@ survey [
 ]..
 ```
 
+**Always write a `title` and an `instructions`.** A survey is read by a person who arrives at it
+cold, with no idea who is asking or why, and a set of ideas with no heading and no explanation is
+not usable by them — it is the single most common thing a generated survey gets wrong. `name` is
+an internal handle and is never shown as a heading.
+
+- `title` is the survey's own name, in the words a participant would recognise: `"You Can Choose"`.
+- `instructions` say what this is and what to do, in your own sentences, as the person running the
+  survey would put it. Write them **from the request**: whatever the ask tells you about who is
+  being surveyed and what for is what belongs here.
+- Do **not** restate the number that may be chosen. A bounds line — "Choose up to 5 of 12" — is
+  derived from `min-choices` and `max-choices` and rendered directly beneath the instructions, so
+  saying it again in prose only risks contradicting it when the bounds change.
+
 Every word in the language takes exactly one argument. Nothing chains, and nothing takes a
 trailing record.
 
 | Target shape                | How it is written                                                   |
 | :-------------------------- | :------------------------------------------------------------------ |
 | the survey, or the response | a word applied to an attribute list — `response [selection ["i0"]]` |
-| a scalar                    | the value itself — `max-choices 5`, `title "…"`                     |
+| a scalar                    | the value itself — `max-choices 5`, `title "…"`, `instructions "…"` |
 | a list                      | the list itself — `ideas ["…" "…"]`, `selection ["i2" "i0"]`        |
 
 ## The ideas are given, never invented
@@ -97,14 +112,34 @@ A set needs at least two ideas. No two may repeat the same text, and no two may 
 
 L0182 publishes several sample sets, for examples and for getting started. They differ on
 purpose — records with ids, bare strings, an id column, a text-only CSV — because a set can
-arrive in any of those shapes:
+arrive in any of those shapes.
+
+**A JSON dataset may carry the words a participant reads**, as an envelope around its ideas:
+
+```json
+{
+  "title": "What Matters Most?",
+  "instructions": "Below is a list of things people have said they'd like their representatives to focus on. Please click to select the issues that matter most to you.",
+  "ideas": [{ "id": "a3", "text": "protect voting rights" }]
+}
+```
+
+A set that arrives this way supplies `title` and `instructions` on its own, so a program naming
+nothing but the address still renders a page a person can read. They are **defaults**: a `title`
+or `instructions` written in the program wins, because whoever wrote the program is closer to the
+audience than whoever published the dataset. A bare list — a plain JSON array, or any CSV — carries
+no such words, and then writing them is on you.
+
+Every JSON sample below is an envelope. The CSVs are bare lists, on purpose:
 
 - `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json` — twelve civic priorities, with ids
-- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv` — the same twelve, as CSV
-- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv` — eight engineering-team retro ideas, with ids
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json` — eight engineering-team retro ideas, with ids
 - `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json` — ten city budget ideas, as plain strings
 - `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json` — nine product feature requests, with ids
-- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.csv` — seven school improvements, text only
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json` — seven school improvements, text only
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv` — the same twelve civic priorities, as a bare CSV
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv` — the same eight retro ideas, as a bare CSV
+- `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.csv` — the same seven school improvements, text-only CSV
 
 ## The response
 
@@ -123,8 +158,8 @@ survey [
   No idea may appear twice.
 - **When the ideas were fetched, name them by their exact text.** This is the important rule.
   `ideas fetch "<url>"` means the set does not exist until the program compiles, so you have not
-  seen the ids or the positions and cannot know them. Guessing a position compiles cleanly and
-  records the WRONG ideas:
+  seen the ids or the positions and cannot know them. Naming the text is the only form that
+  survives the fetch, because the text is the only key you were actually given:
 
 ```
 survey [
@@ -135,9 +170,14 @@ survey [
 ]..
 ```
 
-- **When you can see the set** — you wrote it out, or you read it back after compiling — name an
-  idea by **its id** (`selection ["b7" "a3"]`) or **its position, counting from 0**
-  (`selection [2 0]` is the third idea then the first).
+- **Only when the set is written out in this same program** — an `ideas ["…" "…"]` list you can
+  read directly above the response — may an idea be named by **its id** (`selection ["b7" "a3"]`)
+  or **its position, counting from 0** (`selection [2 0]` is the third idea then the first).
+- **With `ideas fetch` this form is always wrong**, however familiar an id looks. Recalling a
+  file's ids is not the same as resolving the request against it: the ids that come to mind are
+  the first few in file order, and the request almost never asks for the first few. A response
+  that names `["f-104" "f-118" "f-131"]` for a request that asked for undo, offline mode and
+  search has recorded three ideas nobody chose — and it compiles, because all three ids are real.
 - Text matching ignores case and surrounding space, but the words must be the idea's own.
 - A number is always a position and a string is never one, so those cannot be confused even for a
   set whose ids look like numbers: `selection [1]` is the second idea, `selection ["1"]` is the
@@ -153,7 +193,7 @@ produces.
 
 | Container  | Takes                                                  |
 | :--------- | :----------------------------------------------------- |
-| `survey`   | name, title, ideas, min-choices, max-choices, response |
+| `survey`   | name, title, instructions, ideas, min-choices, max-choices, response |
 | `response` | selection, idea                                        |
 
 ## Selection bounds
@@ -190,6 +230,7 @@ Every word L0182 adds to the base language. All are arity 1.
 | :------------ | :----------------- | :---: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `name`        | `<string: record>` |   1   | The survey this set of ideas was drawn from. It is what ties a response back to the survey it answers, and it is the argument code generation resolves the idea set from.                                                                                                                                                                                                                   |
 | `title`       | `<string: record>` |   1   | The survey's title, shown above the ideas.                                                                                                                                                                                                                                                                                                                                                  |
+| `instructions` | `<string: record>` |   1   | What the participant is asked to do, in your own words, shown under the title and above the ideas. The bounds line beneath it is derived from min-choices and max-choices, so instructions should say what the survey is FOR rather than restate the count. |
 | `ideas`       | `<list: record>`   |   1   | The set of ideas this response is chosen from, written at code generation. Each entry is a line of text, or a record naming the service's own id: ideas ["…" {id: "a3" text: "…"}].                                                                                                                                                                                                         |
 | `min-choices` | `<number: record>` |   1   | Fewest ideas a response may select. Defaults to 1.                                                                                                                                                                                                                                                                                                                                          |
 | `max-choices` | `<number: record>` |   1   | Most ideas a response may select. Defaults to the number of ideas.                                                                                                                                                                                                                                                                                                                          |
@@ -205,6 +246,8 @@ Every word L0182 adds to the base language. All are arity 1.
 survey [
   name "you-can-choose"
   title "You Can Choose"
+  instructions "Below is a list of things people have said they'd like their representatives to
+    focus on. Please click to select the issues that matter most to you."
   ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json"
   min-choices 1
   max-choices 5

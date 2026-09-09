@@ -51,6 +51,12 @@ export const Survey = ({ state }: FormProps) => {
       <header className="flex flex-col gap-1">
         {survey.title && <h1 className="text-lg font-semibold text-zinc-900">{survey.title}</h1>}
         <p className="text-xs uppercase tracking-wide text-zinc-400">{survey.name}</p>
+        {/* Author's own words, between the title and the ideas. The bounds line that follows is
+            derived from the choice bounds (see boundsLabel), so the two do not restate one
+            another: this says what the survey is for, that says how many may be chosen. */}
+        {survey.instructions && (
+          <p className="mt-2 whitespace-pre-line text-sm text-zinc-600">{survey.instructions}</p>
+        )}
       </header>
 
       {/* One column on a phone. This is published as an embed and renders inside other people's
