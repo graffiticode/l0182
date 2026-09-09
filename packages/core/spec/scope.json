@@ -1,7 +1,8 @@
 {
   "id": "0182",
-  "summary": "Collective-intelligence surveys — a named set of ideas someone is asked to choose between, and the response to it: the ideas chosen in priority order, plus one new idea that was not in the set.",
+  "summary": "Collective-intelligence surveys — answering a named set of ideas someone is asked to choose between: the ideas chosen in priority order, plus one new idea that was not in the set. Most requests are someone recording their answer to a set that already exists.",
   "in_scope": [
+    "Answering a survey someone has been given — recording a person's or an agent's response to a set of ideas that already exists, which is the ordinary request",
     "Recording which ideas someone chose from a named survey's set, and the priority order they put them in",
     "Contributing one new idea that was not already in the set, alongside a selection or on its own",
     "Reading the set of ideas a response is chosen from out of a JSON or CSV dataset over HTTP, with `ideas fetch \"<url>\"`, at the moment the program compiles",

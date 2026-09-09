@@ -3,17 +3,30 @@
 # L0182 RAG Training Examples
 
 52 example prompts for training a RAG model on L0182, the collective-intelligence survey
-record — covering creating a survey from a dataset, writing a set of ideas out, the bounds a
-response must satisfy, recording a selection in priority order, contributing a new idea, and
-giving a survey the title and instructions a participant reads before answering.
+record — covering answering a survey, putting the chosen ideas in priority order, contributing
+one idea of your own, answering within the bounds a survey sets, and setting a survey up for
+other people to answer.
 
-Each numbered line is a prompt in the author's own voice. Prompts describe WHAT to build, never
-how to write it: an author asks for a survey, not for a `survey [...]` program.
+**These are prompts for answering, not for authoring.** The sets themselves are fixed — they
+live in this repository and do not change — so what varies from one prompt to the next is the
+response: which ideas are favoured, the order they are put in, and what new idea is added. The
+record holds the set and the response together, so a program written from an answering prompt
+still names the set the answer was chosen from; the request that produces it is nonetheless an
+answer, not a survey. Only the last category asks for a set with no response in it.
 
-**Every prompt is self-contained.** None assumes a survey created by an earlier prompt, and none
-assumes a response has already been recorded — a prompt that wants a response says so and names
-what was chosen. A prompt never asks for the ideas to be invented: it either gives the address
-they live at or supplies them.
+**Most prompts leave the choosing to whoever answers.** A request that dictates every pick
+teaches transcription; a request that says "choose the three you think matter most" is the one
+that actually exercises judgement, which is the interesting part of answering. Both appear here,
+because a person recording their own answer really does dictate it — but the deciding kind
+dominates, and the contributed idea is almost always left to the responder to think of.
+
+Each numbered line is a prompt in the requester's own voice. Prompts describe WHAT to record,
+never how to write it: someone asks for an answer, not for a `response [...]`.
+
+**Every prompt is self-contained.** None assumes a survey created by an earlier prompt — a
+prompt that records a response also says where the ideas come from, because a selection means
+nothing without the set it was chosen from. A prompt never asks for the ideas to be invented: it
+either gives the address they live at or supplies them.
 
 The addresses are L0182's own sample datasets, so these prompts are runnable rather than
 illustrative. They differ on purpose — records with ids, bare strings, an id column, a text-only
@@ -31,73 +44,78 @@ lists**, so a prompt naming a CSV is one where those words have to be written fr
 | `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv`     | the same eight retro ideas, bare CSV                       |
 | `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.csv`   | the same seven school improvements, text-only bare CSV     |
 
+Every idea named below is one the dataset actually contains. A selection that names an idea the
+set does not hold is a compile error, so a prompt that invents one teaches the wrong thing.
 
-## Category 1: Creating a Survey from a Dataset (1–10)
+## Category 1: Answering With Your Own Judgement (1–12)
 
-1. Create the 'you-can-choose' survey, reading its ideas from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json.
-2. Set up a survey named team-retro titled 'What Should We Fix First?', reading its ideas from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json.
-3. Make a survey called parks-budget whose ideas come from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json.
-4. Build a survey named feature-requests from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json, titled 'What Should We Build Next?'.
-5. Create a survey record named school-priorities that pulls its ideas from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json.
-6. Set up the civic-priorities survey reading its ideas from the CSV at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.csv.
-7. I want to answer the city budget survey — read its ideas from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json.
-8. Make me a survey named product-roadmap from the feature list at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json.
-9. Create a survey called sprint-focus that fetches its ideas from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json.
-10. Build a survey named schools-first, titled 'Where Should the Money Go?', from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json.
+1. Answer the retro survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json — read the eight ideas and choose the three you think would help an engineering team most, in order.
+2. Take the city budget survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json and pick the two you would fund first. Say them in priority order.
+3. Answer the school survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json, choosing what you judge would do the most good for students.
+4. Work through the feature survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json and record the three features you would build first.
+5. Answer the survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv — decide for yourself which single idea matters most and record just that one.
+6. Here is the city budget set at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json. Choose four and rank them by how many people each would reach.
+7. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json as an engineer who has to maintain the thing: pick the two you would want most.
+8. Read https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.csv and record the answer you think a teacher would give, three choices in order.
+9. Answer the retro survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json picking the ideas that address causes rather than symptoms.
+10. Take https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json and choose whatever you would pick if the budget only stretched to two of them.
+11. Answer the survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json for me — I pick affordable housing and clean air and water.
+12. Record my answer to https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json: smaller class sizes in the early grades, and free breakfast for every student.
 
-## Category 2: Writing the Ideas Out (11–18)
+## Category 2: Ranking What You Chose (13–20)
 
-11. Create a survey named team-lunch with these ideas: tacos, ramen, a salad bar, pizza, sandwiches.
-12. Make a survey called office-perks from this list — better coffee, standing desks, a quiet room, more plants, secure bike storage.
-13. Build a survey named retro-actions with these ideas, keeping the ids from our tracker: r1 pair more often, r2 write smaller PRs, r3 timebox standup, r4 rotate the on-call.
-14. Set up a survey named offsite-venue titled 'Where Should We Meet?' with these five venues written out.
-15. Create a survey called reading-group whose ideas are the six books I just listed, with no ids of their own.
-16. Make a survey named charity-vote from these options, keeping each one's id from our database.
-17. Build a survey named conference-talks with these eight submitted titles, in the order I gave them.
-18. Create a survey called hackday-themes with these ideas: accessibility, developer tooling, performance, onboarding.
+13. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json with four choices, ordered so the one you would do this week is first.
+14. Pick five from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json and rank them, most urgent first.
+15. Answer the feature survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json and order your picks by how many users each would help.
+16. Choose three from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json and rank them by what a student would notice soonest.
+17. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv ranking your choices by how much time each would save the team.
+18. Take https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json, pick three, and put the cheapest one last.
+19. Answer the survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json with universal healthcare system first, then affordable housing, then clean air and water.
+20. Record my top three from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json in priority order: search across everything, not just the current page; then export to CSV and PDF; then a dark theme that respects the system setting.
 
-## Category 3: Bounds on a Response (19–26)
+## Category 3: Contributing an Idea of Your Own (21–32)
 
-19. Create the you-can-choose survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json where you may pick at most 5 ideas.
-20. Make a survey named team-retro from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json where people choose exactly 3 — no more, no fewer.
-21. Set up the parks-budget survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json requiring at least two choices.
-22. Create a survey named office-perks with these ideas — better coffee, standing desks, a quiet room, more plants — capped at 2 choices.
-23. Build the feature-requests survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json where choosing none is allowed, up to a maximum of 5.
-24. Make a survey named school-priorities from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.csv requiring between 2 and 4 choices.
-25. Create a survey named team-lunch with these ideas — tacos, ramen, a salad bar, pizza — where exactly one may be chosen.
-26. Set up the civic-priorities survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json limited to the top 3, with at least one required.
+21. Answer the retro survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json with two choices, and add an idea of your own that the list is missing.
+22. Take the city budget survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json, pick three, and contribute something the council has clearly not thought of.
+23. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json and add one idea of your own — something no one on the list proposed.
+24. Answer the feature survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json with your two favourites plus a feature you would want that is not offered.
+25. Choose one from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv and add your own idea about how the team works, not what it builds.
+26. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json with a selection and a contribution that would cost almost nothing.
+27. Take https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json, pick what you like, and add an idea aimed at people who use the product every day.
+28. Answer the school survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.csv with two choices and one idea of your own about what happens outside the classroom.
+29. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json and contribute an idea that would make the other eight easier to do.
+30. Pick two from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json and add something for the people the list overlooks.
+31. Answer the survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json with affordable housing and clean air and water, plus an idea of my own: make public transit free at the point of use.
+32. Record my answer to https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json — air conditioning in every classroom, plus one of mine: a hot lunch children will actually eat.
 
-## Category 4: Recording a Selection (27–36)
+## Category 4: A New Idea and Nothing Chosen (33–38)
 
-27. Create the you-can-choose survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json and record that I chose affordable housing, then clean air and water, then strengthen public schools.
-28. Set up a survey named team-retro from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json and save my answer: cut the build time in half first, then write smaller pull requests.
-29. Make the parks-budget survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json and record a response naming just one idea — extend library hours into the evening.
-30. Create a survey named office-perks with these ideas — better coffee, standing desks, a quiet room, more plants — and record that I picked standing desks then better coffee.
-31. Build the feature-requests survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json and save my three choices in priority order: undo, on everything, for at least a day; then offline mode that syncs when you reconnect; then search across everything, not just the current page.
-32. Create a survey named retro-actions with these ideas — pair more often, write smaller PRs, timebox standup — and record that I chose the first and third, in that order.
-33. Set up the civic-priorities survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json and record my ranking with universal healthcare system at the top, then affordable housing.
-34. Make the school-priorities survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json and record that I chose smaller class sizes in the early grades, then free breakfast for every student.
-35. Create the you-can-choose survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json allowing up to 3 choices, and record that I picked invest in public transit first, then mitigate climate change.
-36. Build a survey named hackday-themes with these ideas — accessibility, developer tooling, performance, onboarding — and record accessibility as my only choice.
+33. None of the retro ideas at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json get at what actually slows a team down. Choose nothing and record your own idea instead.
+34. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json without picking anything from the list — just the one thing you would do instead.
+35. Read https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json, decide none of it is the right priority, and record only your own idea.
+36. Answer the school survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json with no selection and a single contribution.
+37. Answer the survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json without choosing any of the listed ideas — just record mine: expand access to preventive dental care.
+38. I don't want to pick from the list at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.csv. Just put down my idea: pay teaching assistants a living wage.
 
-## Category 5: Contributing a New Idea (37–44)
+## Category 5: Answering Within the Survey's Bounds (39–46)
 
-37. Create the you-can-choose survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json and record my answer: affordable housing and clean air and water, plus an idea of my own — make public transit free at the point of use.
-38. Set up the you-can-choose survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json allowing no choices at all, and record only a new idea of mine: expand access to preventive dental care.
-39. Make a survey named office-perks with these ideas — better coffee, standing desks, a quiet room — and record that I picked standing desks and added my own: a nap room.
-40. Create the parks-budget survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json and save my two choices along with one suggestion of my own.
-41. Build the team-retro survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv and record one chosen idea plus one contributed idea.
-42. Set up a survey named team-lunch with these ideas — tacos, ramen, a salad bar, pizza — and record that I chose ramen and suggested dumplings.
-43. Create the feature-requests survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json and record a ranked selection of two features plus a new idea that is not already in the list.
-44. Make the school-priorities survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json, requiring at least one choice, and record my pick of air conditioning in every classroom with my own idea: a hot lunch that children will actually eat.
+39. The survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json asks for exactly 3. Choose the three you think matter most.
+40. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json where at most 2 may be chosen — decide which two.
+41. https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json allows between 2 and 4 choices. Answer it with your own picks, in order.
+42. Answer the school survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json where only one may be chosen. Pick the one that would help most.
+43. https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv allows choosing none, up to 4. Record whatever you actually think, even if that is a single idea.
+44. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json requiring at least one choice, and add an idea of your own as well.
+45. The survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json lets people pick at most 5. Record my three: affordable housing, clean air and water, invest in public transit.
+46. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.csv, which asks for between 2 and 4, with more counsellors, free breakfast for every student, and later start times for high school.
 
-## Category 6: Titles and Instructions (45–52)
+## Category 6: Answering From a Particular Point of View (47–50)
 
-45. Create the you-can-choose survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json, titled 'You Can Choose', and tell people the list is what others have said they'd like their representatives to focus on, and to click the issues that matter most to them.
-46. Set up a survey named budget-2027 from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json for a town hall, explaining that the council will fund the top choices in next year's budget.
-47. Make the team-retro survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json and tell the team these came out of last sprint's retro and to pick what we should fix first.
-48. Build a survey called school-priorities from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json for parents, explaining that the district is deciding where to spend a one-time grant.
-49. Create a survey named feature-requests from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json for our beta users, telling them these are the most-requested features and that their ranking sets the roadmap order.
-50. Make a survey named charity-vote with these ideas — the food bank, the animal shelter, the literacy program — titled 'Where Should We Give?', telling staff the company will donate to whichever they rank first.
-51. Set up the civic-priorities survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json with the title 'What Matters Most?' and an explanation written in plain language for someone who has never seen the site before.
-52. Create a survey named offsite-venue with these ideas — the lakeside lodge, a city hotel, the campground — and explain that we are choosing where to hold the winter offsite.
+47. Answer the school survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-school.json the way a parent of a five-year-old would, and add the idea they would add.
+48. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-city.json as someone who does not own a car.
+49. Take the retro survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json as the person who carries the pager, and contribute an idea from that experience.
+50. Answer https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-product.json as a customer who has been asking for the same thing for two years.
+
+## Category 7: Preparing a Set for Others to Answer (51–52)
+
+51. Set up the you-can-choose survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json so people can record what they picked, titled 'You Can Choose', telling them the list is what others have said they'd like their representatives to focus on and to select the issues that matter most.
+52. Prepare a survey named team-retro from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.json for the team to answer, explaining that these came out of last sprint's retro and asking what we should fix first, with at most 3 choices.

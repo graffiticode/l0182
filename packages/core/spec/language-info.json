@@ -1,27 +1,20 @@
 {
   "id": "0182",
-  "description": "Collective-intelligence surveys — a named set of ideas someone is asked to choose between, and the response to it: the ideas chosen in priority order plus one new idea that was not in the set. The set is read from a JSON or CSV dataset by `ideas fetch \"<url>\"` when the program compiles; L0182 describes no flow and has no interactive player.",
-  "supported_item_types": ["survey", "response"],
+  "description": "Collective-intelligence surveys — answering a named set of ideas someone is asked to choose between: the ideas chosen in priority order plus one new idea that was not in the set. Most requests are someone recording a response; the set itself is read from a JSON or CSV dataset by `ideas fetch \"<url>\"` when the program compiles. L0182 describes no flow and has no interactive player.",
+  "supported_item_types": [
+    "survey",
+    "response"
+  ],
   "example_prompts": [
     {
-      "prompt": "Set up the 'you-can-choose' survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json so I can record what I picked.",
-      "produces": "survey",
-      "notes": "The canonical starting point — `ideas fetch \"<url>\"` reads the set, and there is no response yet."
-    },
-    {
-      "prompt": "Create a survey from the team-priorities pool, titled 'Team Priorities', where you may pick at most 5.",
-      "produces": "survey",
-      "notes": "`title` and `max-choices` alongside the name. `max-choices` can never exceed the number of ideas."
-    },
-    {
-      "prompt": "Build a survey named team-retro from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas-team.csv, keeping the id column.",
-      "produces": "survey",
-      "notes": "`fetch` reads CSV as records keyed by the header row, so an `id,text` file gives ideas with their own ids. An entry with no id is numbered by position, i0 upward."
+      "prompt": "Answer the you-can-choose survey at https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json for me — I pick affordable housing and clean air and water.",
+      "produces": "response",
+      "notes": "The common case: a set already exists and what is brought to it is an answer. The program still names the set, because a selection means nothing without it."
     },
     {
       "prompt": "Record that I chose affordable housing, clean air and water, and voting rights, in that order.",
       "produces": "response",
-      "notes": "`selection` names the ideas chosen and the order is the ranking. An entry names an idea by its exact text, its id, or its position from 0. Use the text when the ideas were fetched — the set does not exist until the program compiles, so the ids cannot be known when the response is written."
+      "notes": "`selection` names the ideas chosen and the order IS the ranking. An entry names an idea by its exact text, its id, or its position from 0. Use the text when the ideas were fetched — the set does not exist until the program compiles, so the ids cannot be known when the response is written."
     },
     {
       "prompt": "Add my own idea alongside my selection: make public transit free.",
@@ -34,14 +27,24 @@
       "notes": "`idea` may stand alone; `selection` comes back empty."
     },
     {
-      "prompt": "Require between 2 and 6 choices.",
-      "produces": "survey",
-      "notes": "min-choices 2 max-choices 6. The compiler is the only thing enforcing these — there is no player."
-    },
-    {
       "prompt": "Reorder my selection so the housing idea comes first.",
       "produces": "response",
       "notes": "Reordering `selection` IS re-ranking; there is no separate rank step."
+    },
+    {
+      "prompt": "My team was asked to pick lunch from tacos, ramen, a salad bar and pizza. Record that I chose ramen, then tacos.",
+      "produces": "response",
+      "notes": "The set can be written out rather than fetched. Either way the answer is what the request is about."
+    },
+    {
+      "prompt": "Set up the 'you-can-choose' survey from https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json so people can record what they picked.",
+      "produces": "survey",
+      "notes": "Preparing a set for others to answer — `ideas fetch \"<url>\"` reads it, and there is no response yet. Always write a title and instructions: whoever answers arrives cold."
+    },
+    {
+      "prompt": "Require between 2 and 6 choices.",
+      "produces": "survey",
+      "notes": "min-choices 2 max-choices 6. The compiler is the only thing enforcing these — there is no player. `max-choices` can never exceed the number of ideas."
     }
   ]
 }
