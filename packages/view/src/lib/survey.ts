@@ -16,7 +16,7 @@ export interface Idea {
 export interface Survey {
   name: string;
   title?: string;
-  instructions?: string;
+  instructions: string;
   ideas: Idea[];
   minChoices: number;
   maxChoices: number;

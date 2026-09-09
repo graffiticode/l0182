@@ -33,6 +33,12 @@ cold, with no idea who is asking or why, and a set of ideas with no heading and 
 not usable by them — it is the single most common thing a generated survey gets wrong. `name` is
 an internal handle and is never shown as a heading.
 
+**Every compiled survey has instructions**, whether or not the program wrote any: the compiler
+substitutes a generic line rather than emitting a survey a participant cannot read. That fallback
+is a floor, not a target. It says nothing about the subject, the audience or who is asking, so a
+survey that ships with it reads as though nobody thought about the reader — write real ones from
+the request.
+
 - `title` is the survey's own name, in the words a participant would recognise: `"You Can Choose"`.
 - `instructions` say what this is and what to do, in your own sentences, as the person running the
   survey would put it. Write them **from the request**: whatever the ask tells you about who is

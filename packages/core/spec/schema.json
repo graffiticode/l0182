@@ -9,7 +9,7 @@
     "survey": {
       "description": "The set of ideas and the bounds a response must satisfy. Written at code generation, resolved from the survey's name against the service that holds the pool.",
       "type": "object",
-      "required": ["name", "ideas", "minChoices", "maxChoices"],
+      "required": ["name", "instructions", "ideas", "minChoices", "maxChoices"],
       "properties": {
         "name": {
           "description": "The survey these ideas were drawn from. Ties a response back to the survey it answers, and is the argument code generation resolves the set from.",
@@ -20,7 +20,7 @@
           "type": "string"
         },
         "instructions": {
-          "description": "What the participant is asked to do, shown under the title and above the ideas. The bounds line beneath it is derived from minChoices and maxChoices.",
+          "description": "What the participant is asked to do, shown under the title and above the ideas. Always present: the compiler substitutes a generic line when neither the program nor its dataset supplies one. The bounds line beneath it is derived from minChoices and maxChoices.",
           "type": "string"
         },
         "ideas": {

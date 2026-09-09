@@ -9,6 +9,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { compile, errorOf } from "./harness.js";
+import { DEFAULT_INSTRUCTIONS } from "./survey.js";
 
 const IDEAS = `ideas [
   "protect voting rights"
@@ -24,6 +25,8 @@ describe("the survey record", () => {
     expect(out).toEqual({
       survey: {
         name: "you-can-choose",
+        // Always present — see "instructions are guaranteed, not optional".
+        instructions: DEFAULT_INSTRUCTIONS,
         ideas: [
           { id: "i0", text: "protect voting rights" },
           { id: "i1", text: "universal healthcare system" },
@@ -406,5 +409,30 @@ describe("misplaced words", () => {
     expect(await errorOf(survey(`${IDEAS} title 7`))).toContain(
       'title: expected a string in "quotes", got 7',
     );
+  });
+});
+
+describe("instructions are guaranteed, not optional", () => {
+  // The compiler's one promise about the words a participant reads: a survey that reached the
+  // output has instructions. Whether they are good is the generator's problem; whether they
+  // EXIST is the compiler's, because a page with no explanation is the failure this prevents.
+  const SET = '["clean air and water" "affordable housing"]';
+
+  it("substitutes a generic line when the program writes none", async () => {
+    const out: any = await compile(`survey [ name "s" ideas ${SET} ]..`);
+    expect(out.survey.instructions).toBe(DEFAULT_INSTRUCTIONS);
+  });
+
+  it("keeps what the program wrote", async () => {
+    const out: any = await compile(
+      `survey [ name "s" instructions "Pick what matters to you." ideas ${SET} ]..`,
+    );
+    expect(out.survey.instructions).toBe("Pick what matters to you.");
+  });
+
+  it("the fallback claims nothing about how many may be chosen", async () => {
+    // The bounds line is rendered from min-choices/max-choices directly beneath the
+    // instructions, so a fallback naming a count would contradict it as soon as bounds change.
+    expect(DEFAULT_INSTRUCTIONS).not.toMatch(/\b(\d+|one|two|three|four|five)\b/i);
   });
 });

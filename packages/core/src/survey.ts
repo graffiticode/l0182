@@ -38,10 +38,20 @@ export interface AuthoredResponse {
   idea?: string;
 }
 
+/**
+ * The wording a survey falls back to when neither the program nor its dataset says anything.
+ *
+ * Deliberately says what the page IS and what to do, and deliberately says nothing about how
+ * many may be chosen — the bounds line beneath it is derived from min-choices/max-choices, and
+ * a fallback that guessed at the count would contradict it.
+ */
+export const DEFAULT_INSTRUCTIONS =
+  "Below is a list of ideas. Please choose the ones that matter most to you.";
+
 export interface Survey {
   name: string;
   title?: string;
-  instructions?: string;
+  instructions: string;
   ideas: Idea[];
   minChoices: number;
   maxChoices: number;
@@ -341,12 +351,19 @@ export function buildSurvey(raw: any): Compiled {
   const { minChoices, maxChoices } = resolveBounds(attrs, ideas);
 
   const title = attrs.title !== undefined ? attrs.title : envelope?.title;
-  const instructions = attrs.instructions !== undefined ? attrs.instructions : envelope?.instructions;
+  const authored = attrs.instructions !== undefined ? attrs.instructions : envelope?.instructions;
+
+  // Every compiled survey carries instructions, because a participant arrives cold and a bare
+  // list of ideas does not tell them what they are looking at. Falling back rather than refusing
+  // is deliberate: a survey that compiles with generic wording is still usable, whereas a hard
+  // error would fail a program over prose — and the generic line is visibly generic, which is
+  // what prompts someone to replace it. Write real instructions; this is the floor, not the goal.
+  const instructions = authored !== undefined ? authored : DEFAULT_INSTRUCTIONS;
 
   const survey: Survey = {
     name: attrs.name,
     ...(title !== undefined ? { title } : {}),
-    ...(instructions !== undefined ? { instructions } : {}),
+    instructions,
     ideas,
     minChoices,
     maxChoices,

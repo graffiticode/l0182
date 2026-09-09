@@ -13,6 +13,9 @@ import type { Survey } from "./survey";
 
 const survey = (over: Partial<Survey> = {}): Survey => ({
   name: "you-can-choose",
+  // The compiler guarantees this field, so the fixture carries it too — the view is a
+  // projection of the compiled record and must not be typed more loosely than one.
+  instructions: "Below is a list of ideas. Please choose the ones that matter most to you.",
   ideas: [
     { id: "i0", text: "clean air and water" },
     { id: "i1", text: "affordable housing" },
