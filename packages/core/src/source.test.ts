@@ -32,10 +32,12 @@ describe("finding a survey", () => {
     expect(drawn.size).toBe(versions);
   });
 
-  test("a CSV survey reads as a set too", async () => {
+  test("a survey brings its own words and bounds, not just a list", async () => {
     const { data } = await loadSurvey("school-1", {});
-    expect(data.length).toBeGreaterThan(1);
-    expect(data[0].text).toBeTypeOf("string");
+    expect(data.title).toBeTypeOf("string");
+    expect(data.instructions.length).toBeGreaterThan(20);
+    expect(data.maxChoices).toBeGreaterThan(0);
+    expect(data.ideas.length).toBeGreaterThan(1);
   });
 
   test("an unknown id names the surveys there are", async () => {

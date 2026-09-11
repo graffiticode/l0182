@@ -63,13 +63,15 @@ immune.
 
 ## What a survey holds
 
-A survey's data is a list of ideas, or a record carrying the words a participant reads alongside
-them:
+A survey is one JSON file per version, and everything the survey is lives in it — the words a
+participant reads, the ideas, and the bounds a response must satisfy:
 
 ```json
 {
   "title": "What Matters Most?",
   "instructions": "Below is a list of things people have said they'd like their representatives to focus on. Please select the issues that matter most to you.",
+  "minChoices": 1,
+  "maxChoices": 3,
   "ideas": [
     { "id": "a3", "text": "protect voting rights" },
     { "id": "b7", "text": "affordable housing" }
@@ -82,20 +84,10 @@ entry that names its own id keeps it — a selection of positional ids would mea
 that service — and one that does not is numbered by position, `i0` upward. A set needs at least
 two ideas, and no two may repeat the same text or share an id.
 
-CSV works too, where the header row names the fields and each row becomes a record:
+An idea's id is always a string, even when it looks like a number.
 
-```
-id,text
-a3,protect voting rights
-b7,"affordable housing, and enough of it"
-```
-
-A numeric-looking `id` stays a string; an idea's id always is one. A CSV carries no title or
-instructions, so a survey stored that way falls back to a generic instruction line.
-
-`minChoices` and `maxChoices` are the survey's too. They default to 1 and 5 — or to one fewer
-than the set when the set is smaller, so a default never lets a response name every idea there
-is. Choosing everything is not choosing.
+`minChoices` and `maxChoices` are optional. They default to 1 and 5 — or to one fewer than the set when the set is smaller, so a default never lets a response
+name every idea there is. Choosing everything is not choosing.
 
 ## The response
 
@@ -154,7 +146,7 @@ refuses a response that breaks them.
       { "id": "t3", "text": "write smaller pull requests" }
     ],
     "minChoices": 1,
-    "maxChoices": 5
+    "maxChoices": 3
   },
   "response": { "selection": ["t2", "t3"], "idea": "give every service a named owner" }
 }

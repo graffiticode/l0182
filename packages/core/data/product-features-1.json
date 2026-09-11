@@ -1,6 +1,8 @@
 {
   "title": "What Should We Build Next?",
   "instructions": "These are the features our customers have asked for most often. Choose the ones that would make the biggest difference to your work, most important first.",
+  "minChoices": 2,
+  "maxChoices": 4,
   "ideas": [
     {
       "id": "f-104",

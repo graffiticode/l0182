@@ -1,6 +1,8 @@
 {
   "title": "What Should We Fix First?",
   "instructions": "These came out of last sprint's retro. Pick the ones you think we should take on first — your ranking helps us decide what to commit to.",
+  "minChoices": 1,
+  "maxChoices": 3,
   "ideas": [
     {
       "id": "t1",

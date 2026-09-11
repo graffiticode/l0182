@@ -424,10 +424,12 @@ are NOT served by this language server — `build-static.js` never reads `data/`
 asserts a 404. Serving them would let whoever takes a survey read it, or a client render it,
 before taking it, which is the thing the split exists to prevent.
 
-Every file is `<survey-id>-<n>.json|csv`, and `docs.test.ts` compiles each one as a program, so a
+Every file is `<survey-id>-<n>.json`, and `docs.test.ts` compiles each one as a program, so a
 file that stops being a valid survey fails the build rather than somebody's first prompt. It also
-asserts every id the docs name is installed. They differ in shape on purpose (records with ids,
-bare strings, a text-only CSV): a corpus of one shape teaches the generator one shape. The
+asserts every id the docs name is installed, and that the surveys meaning to bound a response
+carry `minChoices`/`maxChoices` themselves — there is no word for them. The sets differ in shape
+on purpose (records carrying a service's ids, bare strings): a corpus of one shape teaches the
+generator one shape. The
 documented ANSWER examples all name a single-version survey — one with several draws a version at
 random, so a documented selection would match only sometimes.
 
@@ -471,8 +473,10 @@ obvious next feature request re-proposes one of them:
   Both clients are the same client now, so there is no population to separate.
 - **`scripts/post-response.mjs`**, which posted a response as task data. Responses are code.
 - **The words that authored a survey** — `ideas`, `title`, `instructions`, `min-choices`,
-  `max-choices`, and `name` — plus **`fetch`** (`src/fetch.ts`, its scheme and host checks, its
-  timeout, and the JSON-before-CSV rule) and the whole "point the program at a dataset" model.
+  `max-choices`, and `name` — plus **`fetch`** (`src/fetch.ts`, its scheme and host checks and
+  its timeout), CSV reading, and the whole "point the program at a dataset" model. A survey is
+  one JSON file that says everything it is; CSV could carry a list and nothing else, so a survey
+  stored that way had no title, no instructions and no bounds of its own.
   The survey comes from the back end; a program that could write any of this could edit the
   survey it is taking. The parse errors they now produce are the point: they are out of the
   lexicon, not merely refused by `survey`.

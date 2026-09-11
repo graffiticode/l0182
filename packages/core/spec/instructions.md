@@ -44,16 +44,17 @@ trailing record.
 
 An `id` names a survey the language server holds. These are installed:
 
-| `id`               | The survey                                                                                                  |
-| :----------------- | :---------------------------------------------------------------------------------------------------------- |
-| `you-can-choose`   | civic priorities — what people want their representatives to work on. Twelve versions; taking it draws one. |
-| `team-retro`       | eight things an engineering team could fix first, from a sprint retro                                       |
-| `city-budget`      | ten neighbourhood projects a city council could fund                                                        |
-| `product-features` | nine features customers have asked for                                                                      |
-| `school`           | seven school improvements                                                                                   |
+| `id`               | The survey                                                                                                  | Choices |
+| :----------------- | :---------------------------------------------------------------------------------------------------------- | :------ |
+| `you-can-choose`   | civic priorities — what people want their representatives to work on. Twelve versions; taking it draws one. | 1–5     |
+| `team-retro`       | eight things an engineering team could fix first, from a sprint retro                                       | 1–3     |
+| `city-budget`      | ten neighbourhood projects a city council could fund                                                        | 0–2     |
+| `product-features` | nine features customers have asked for                                                                      | 2–4     |
+| `school`           | seven school improvements                                                                                   | 0–3     |
 
 An id that does not exist is a compile error listing the ones that do — so if you are unsure,
-write your best guess and read the error rather than inventing a survey.
+write your best guess and read the error rather than inventing a survey. The choice counts are
+the survey's own and cannot be changed from a program; a response outside them is refused.
 
 **A survey may have several versions**, one per file: `you-can-choose-1`, `you-can-choose-2`, and
 so on. Naming the survey (`id "you-can-choose"`) draws one of them, and which one is recorded as

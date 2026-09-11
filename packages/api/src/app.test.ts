@@ -58,7 +58,7 @@ describe("public assets are readable with no token", () => {
   it("does not serve the surveys themselves", async () => {
     // The surveys in core's data/ are what the compiler reads, and nothing more: a survey its
     // taker could read ahead of taking it — or edit — would not be one.
-    for (const f of ["you-can-choose-1.json", "team-retro-1.json", "school-1.csv"]) {
+    for (const f of ["you-can-choose-1.json", "team-retro-1.json", "school-1.json"]) {
       expect((await request(app).get(`/${f}`)).status, f).toBe(404);
     }
   });

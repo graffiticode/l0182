@@ -28,12 +28,10 @@
   },
   "dependencies": {
     "@graffiticode/l0000": "^0.2.0",
-    "decimal.js": "^10.5.0",
-    "papaparse": "^5.7.0"
+    "decimal.js": "^10.5.0"
   },
   "devDependencies": {
     "@graffiticode/parser": "^1.7.0",
-    "@types/papaparse": "^5.5.2",
     "ajv": "^8.20.0",
     "spec-md": "^3.1.0",
     "vitest": "^2.1.3"

@@ -7,6 +7,11 @@
  * out here, so that whoever takes the survey has not seen it before the first turn compiles.
  * That is the whole point of the split: a survey the taker could edit is not a survey.
  *
+ * A survey is ONE JSON file per version, and everything the survey is lives in it: its ideas, its
+ * title, its instructions and its bounds. CSV was readable here once and is not any more — it
+ * carries a list and nothing else, so a survey stored that way had to fall back to generic
+ * wording, which is the opposite of what a survey is for.
+ *
  * A survey id names a SET of files, one per version of the survey: `you-can-choose-1.json`,
  * `you-can-choose-2.json`, and so on. Taking the survey draws one of them at random WITHOUT
  * replacement — a drawn file is marked taken until every file for that id has been taken, at
@@ -31,7 +36,6 @@
  */
 import { readFileSync, readdirSync } from "fs";
 import { fileURLToPath } from "url";
-import Papa from "papaparse";
 
 /**
  * The directory holding every survey, hard-coded relative to this module.
@@ -65,57 +69,39 @@ const INSTANCE = /^(.*)-(\d+)$/;
 
 /** Which files belong to a survey, in file order. */
 function instancesOf(id: string): string[] {
-  const re = new RegExp(`^${id}-(\\d+)\\.(json|csv)$`);
+  const re = new RegExp(`^${id}-(\\d+)\\.json$`);
   return readdirSync(DATA_DIR)
     .map((f) => re.exec(f))
     .filter((m): m is RegExpExecArray => !!m)
     .sort((a, b) => Number(a[1]) - Number(b[1]))
-    .map((m) => m[0].replace(/\.(json|csv)$/, ""));
+    .map((m) => m[0].replace(/\.json$/, ""));
 }
 
 /** Every survey there is, for the "no such survey" message. */
 function surveyIds(): string[] {
   const ids = new Set<string>();
   for (const f of readdirSync(DATA_DIR)) {
-    const m = /^(.+)-\d+\.(json|csv)$/.exec(f);
+    const m = /^(.+)-\d+\.json$/.exec(f);
     if (m) ids.add(m[1]);
   }
   return [...ids].sort();
 }
 
-/**
- * CSV to records keyed by the header row.
- *
- * `dynamicTyping` is off, and that is load-bearing rather than a default left alone: it would
- * turn an `id` column of "1", "2", "3" into numbers, and an idea's id is a string. A `selection`
- * naming ids and one naming positions are told apart by exactly that distinction.
- */
-function parseCsv(text: string): any {
-  const out = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
-  if (!Array.isArray(out.data) || !out.data.length) {
-    throw new Error(`survey: ${JSON.stringify(text.slice(0, 40))} has no rows.`);
-  }
-  return out.data;
-}
-
 function readInstance(instance: string): any {
-  for (const ext of ["json", "csv"]) {
-    let text: string;
-    try {
-      text = readFileSync(`${DATA_DIR}${instance}.${ext}`, "utf-8");
-    } catch {
-      continue;
-    }
-    try {
-      return ext === "json" ? JSON.parse(text) : parseCsv(text);
-    } catch (e: any) {
-      throw new Error(
-        `survey: ${instance}.${ext} could not be read as ${ext.toUpperCase()} — ${e?.message}. ` +
-          "The survey's data is broken; this is not something the program can fix.",
-      );
-    }
+  let text: string;
+  try {
+    text = readFileSync(`${DATA_DIR}${instance}.json`, "utf-8");
+  } catch {
+    return undefined;
   }
-  return undefined;
+  try {
+    return JSON.parse(text);
+  } catch (e: any) {
+    throw new Error(
+      `survey: ${instance}.json is not readable JSON — ${e?.message}. The survey's data is ` +
+        "broken; this is not something the program can fix.",
+    );
+  }
 }
 
 /**

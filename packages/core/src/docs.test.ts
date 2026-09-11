@@ -12,7 +12,6 @@
 import { test, describe, expect } from "vitest";
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
-import Papa from "papaparse";
 import Ajv from "ajv/dist/2020.js";
 import { parser } from "@graffiticode/parser";
 import { lexicon as base } from "@graffiticode/l0000";
@@ -243,36 +242,21 @@ describe("the surveys installed in data/", () => {
   // and a quoted field carrying a comma. That spread is the point; a corpus of one shape teaches
   // the generator one shape.
   const files = readdirSync("data").sort();
-  const instances = files.map((f) => f.replace(/\.(json|csv)$/, ""));
+  const instances = files.map((f) => f.replace(/\.json$/, ""));
 
-  /** The ideas themselves, whether the file is a bare list or an envelope with title/instructions. */
+  /** The whole file. Every survey is one JSON envelope — see "every survey says what it is". */
+  const envelope = (f: string): any => JSON.parse(readFileSync(join("data", f), "utf-8"));
   const read = (f: string): any[] => {
-    const text = readFileSync(join("data", f), "utf-8");
-    if (f.endsWith(".json")) {
-      const parsed = JSON.parse(text);
-      return Array.isArray(parsed) ? parsed : parsed.ideas;
-    }
-    const out = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
-    return out.data as any[];
+    const parsed = envelope(f);
+    return Array.isArray(parsed) ? parsed : parsed.ideas;
   };
-
-  /** The envelope keys, or null for a bare list. */
-  const envelope = (f: string): any =>
-    f.endsWith(".json")
-      ? (() => {
-          const p = JSON.parse(readFileSync(join("data", f), "utf-8"));
-          return Array.isArray(p) ? null : p;
-        })()
-      : null;
 
   test("every file is a version of some survey", () => {
     // `<id>-<n>` is the whole naming rule, and a file outside it is invisible to `id "…"` —
     // installed, never reachable, and silent about it.
     expect(files.length).toBeGreaterThan(3);
     for (const f of files)
-      expect(f, `${f} is not <survey-id>-<n>.json|csv`).toMatch(
-        /^[a-z0-9][a-z0-9-]*-\d+\.(json|csv)$/,
-      );
+      expect(f, `${f} is not <survey-id>-<n>.json`).toMatch(/^[a-z0-9][a-z0-9-]*-\d+\.json$/);
   });
 
   test("at least one survey has several versions, which is what the draw is for", async () => {
@@ -295,12 +279,18 @@ describe("the surveys installed in data/", () => {
     ).toBe(true);
     expect(
       sets.some((set) => typeof set[0] === "object" && set[0].id),
-      "no set with ids",
+      "no set carrying the originating service's ids",
     ).toBe(true);
-    expect(
-      sets.some((set) => typeof set[0] === "object" && !set[0].id),
-      "no text-only CSV",
-    ).toBe(true);
+  });
+
+  test("a survey that means to bound a response says so in its own data", () => {
+    // Bounds are the survey's, not the program's — there is no word for them — so a survey that
+    // wants anything but the defaults has to carry them here.
+    const bounded = files.filter((f) => {
+      const env = envelope(f);
+      return env.minChoices !== undefined || env.maxChoices !== undefined;
+    });
+    expect(bounded.length, "no survey sets its own bounds").toBeGreaterThan(2);
   });
 
   for (const instance of instances) {
@@ -323,24 +313,18 @@ describe("the surveys installed in data/", () => {
   // The words a participant reads are part of the survey, not an afterthought: a program that
   // names a survey and says nothing else must still produce a page with a heading and an
   // explanation. A JSON survey that lost its envelope would silently go back to a bare list.
-  test("every JSON survey carries a title and instructions", () => {
-    const jsons = files.filter((f) => f.endsWith(".json"));
-    expect(jsons.length).toBeGreaterThan(3);
-    for (const f of jsons) {
+  test("every survey says what it is, in its own file", () => {
+    // A survey is not just a list: whoever takes it arrives cold, and the words they read are
+    // the survey's own. A file that lost its envelope would render a page with no heading.
+    expect(files.length).toBeGreaterThan(3);
+    for (const f of files) {
       const env = envelope(f);
-      expect(env, `${f} is a bare list, not an envelope`).not.toBeNull();
+      expect(Array.isArray(env), `${f} is a bare list, not an envelope`).toBe(false);
       expect(typeof env.title, `${f} has no title`).toBe("string");
       expect(env.title.trim().length, `${f} has an empty title`).toBeGreaterThan(0);
       expect(typeof env.instructions, `${f} has no instructions`).toBe("string");
       expect(env.instructions.trim().length, `${f} has empty instructions`).toBeGreaterThan(20);
     }
-  });
-
-  test("a CSV exercises a quoted field, because an idea will contain a comma", () => {
-    const csvs = files.filter((f) => f.endsWith(".csv"));
-    expect(
-      csvs.some((f) => /(^|,)"[^"]*,[^"]*"/m.test(readFileSync(join("data", f), "utf-8"))),
-    ).toBe(true);
   });
 
   test("every survey the docs name is installed", () => {
