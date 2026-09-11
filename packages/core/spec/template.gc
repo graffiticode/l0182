@@ -1,11 +1,8 @@
 survey [
-  name "you-can-choose"
-  title "You Can Choose"
-  instructions "Below is a list of things people have said they'd like their representatives to
-    focus on. Please click to select the issues that matter most to you."
-  ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json"
+  id "team-retro"
+  session-id get-val-public "itemId"
   response [
-    selection ["affordable housing" "clean air and water"]
-    idea "make public transit free at the point of use"
+    selection ["fix the flaky tests before adding features" "cut the build time in half"]
+    idea "give every service a named owner"
   ]
 ]..

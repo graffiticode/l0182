@@ -4,99 +4,84 @@
 
 ## Overview
 
-L0182 is a survey record for collective intelligence. A program is a named set of ideas someone
-is asked to choose between, and — once something has answered — the response to it: the ideas
-chosen in priority order, plus one new idea that was not in the set. The ideas are given rather than
-invented: either `ideas fetch "<url>"` reads them from the dataset that holds them — JSON, or CSV
-keyed by its header row — when the program compiles, or they are written out in full when they
-are already in hand. Either way the set is fixed once the program has compiled. L0182 describes
-no flow at all: no screens, no steps, no navigation, no submission, and nothing that draws a
-sample or aggregates across respondents. The code is the interface — a person edits the program
-in the console's editor, an agent edits it through `update_item`, and both produce the identical
-record, which the renderer shows as the set on one side and the response on the other.
+L0182 is a survey record for collective intelligence. A program names the survey being taken and
+— once something has answered — carries the response to it: the ideas chosen in priority order,
+plus one new idea that was not in the set. The survey itself is NOT written in the program. Its
+ideas, its title, its instructions and its bounds come from the back end, which the compiler
+reads when the program compiles, so whoever takes a survey has not seen it beforehand and cannot
+edit it. A survey may hold several versions, and taking it draws one of them at random; the
+version drawn is recorded in the compiled record. L0182 describes no flow at all: no screens, no
+steps, no navigation, no submission, and nothing that aggregates across respondents. The code is
+the interface — a person edits the program in the console's editor, an agent edits it through
+`update_item`, and both produce the identical record, which the renderer shows as the set on one
+side and the response on the other.
 
 ## Getting started
 
-The smallest survey is a name and somewhere to read the ideas from:
+The smallest program is the survey's id and the session taking it:
 
 ```
-survey [ name "priorities" ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json" ]..
+survey [ id "you-can-choose" session-id get-val-public "itemId" ]..
 ```
 
-That is a survey awaiting a response. `name` says which survey this is and ties any later
-response back to it; `fetch` reads the set.
+That is a survey awaiting a response. `id` says which survey this is, and the compiled record
+comes back with its ideas, its title, its instructions and its bounds.
 
-## Where the set comes from
+Write `session-id get-val-public "itemId"` verbatim in every program. It names one taking of the
+survey, and it is what brings the same version back on the turn that answers.
 
-`fetch` reads JSON or CSV. A CSV's header row names the fields, so `id,text` and the equivalent
-JSON give the same set; unused columns are ignored, and an id that looks like a number stays a
-string. The address must be public — no credentials are sent — and cannot point inside the
-network the language server runs in.
+## The surveys you can take
 
-It reads the dataset once, when the program first compiles, and the set is fixed from then on.
-That is deliberate: a response only means anything against the ideas it was shown.
+| `id`               | The survey                                               |
+| :----------------- | :------------------------------------------------------- |
+| `you-can-choose`   | civic priorities — twelve versions, one drawn per taking |
+| `team-retro`       | eight engineering-team retro ideas                       |
+| `city-budget`      | ten neighbourhood projects a council could fund          |
+| `product-features` | nine features customers have asked for                   |
+| `school`           | seven school improvements                                |
 
-L0182 publishes several sample sets so the examples are ones you can run — `ideas.json` and
-`ideas.csv` (twelve civic priorities), `ideas-team.csv`, `ideas-city.json`, `ideas-product.json`
-and `ideas-school.csv`, all under `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/`. They differ in shape on purpose: records with ids, bare
-strings, an id column, a text-only CSV.
-
-## Writing the set out instead
-
-For ideas already in hand, write them literally. Each entry is a line of text, or a record naming
-the id the service knows it by — keep those ids whenever the dataset carried them.
-
-```
-survey [
-  name "you-can-choose"
-  title "You Can Choose"
-  ideas [
-    {id: "a3" text: "protect voting rights"}
-    {id: "b7" text: "affordable housing"}
-    {id: "c1" text: "mitigate climate change"}
-  ]
-]..
-```
-
-An entry with no id is numbered by position, `i0` upward. A set needs at least two ideas, no two
-may repeat the same text, and no two may share an id.
+An id that does not exist is a compile error listing the ones that do. A survey's versions are
+numbered — `you-can-choose-1`, `you-can-choose-2`, … — and naming one takes it outright, with no
+draw.
 
 ## Answering
 
 ```
 survey [
-  name "priorities"
-  ideas ["clean air and water" "affordable housing" "invest in public transit"]
-  min-choices 1
-  max-choices 2
+  id "team-retro"
+  session-id get-val-public "itemId"
   response [
-    selection [1 0]
-    idea "make public transit free at the point of use"
+    selection ["cut the build time in half" "fix the flaky tests before adding features"]
+    idea "give every service a named owner"
   ]
 ]..
 ```
 
 `selection` names the ideas chosen and **the order is the ranking** — first is most important.
-An idea may be named by its **exact text**, its **id**, or its **position counting from 0**. Use
-the text whenever the ideas were fetched: the set does not exist until the program compiles, so
-the ids are not something you can know when you write the response, and a guessed position
-compiles cleanly while recording the wrong idea. `idea` is one new
-idea that must not already be in the set; that is what makes it new, and it may stand alone with
-nothing selected.
+Name each idea by its **exact text**: the ideas live in the survey, so the ids are not something
+you can know when you write the response, and a guessed position compiles cleanly while
+recording the wrong idea. An id or a position counting from 0 is accepted only when the compiled
+survey is in front of you. `idea` is one new idea that must not already be in the set; that is
+what makes it new, and it may stand alone with nothing selected.
+
+Keep `session-id` when you add the response. Without it the survey may be drawn again, and the
+answer checked against a version its taker never saw.
 
 ## Bounds, and why they matter here
 
-`min-choices` defaults to 1 and `max-choices` to 5 — or to one fewer than the set when the set is
-smaller, so a default never lets a response name every idea there is. Choosing everything is not
-choosing. An authored `max-choices` may take the whole set; only a ceiling larger than the set is
-refused, and `min-choices` can never exceed `max-choices`.
+`minChoices` and `maxChoices` belong to the survey, not to the program. They default to 1 and 5 —
+or to one fewer than the set when the set is smaller, so a default never lets a response name
+every idea there is. Choosing everything is not choosing.
 
 Nothing enforces these at delivery, because there is no delivery. The compiler is the only check
 there is, which is why it refuses a response that breaks them rather than clamping it.
 
 ## What you do not write
 
-A flow. L0182 has no item list, no ordering, no navigation or submission modes, and no results
-screen — it does not hold a pool, draw a sample, or aggregate anything across respondents. If a
-survey-taking flow is wanted, that is a different language or a different client reading this
-record.
+The survey. There is no word for a set of ideas, a title, an instruction line or a bound, and
+writing one is a compile error rather than an override — the survey is the back end's, and a
+survey its taker could edit would not be one.
+
+A flow, either. L0182 has no item list, no ordering, no navigation or submission modes, and no
+results screen — it does not aggregate anything across respondents. If a survey-taking flow is
+wanted, that is a different language or a different client reading this record.

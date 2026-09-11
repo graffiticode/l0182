@@ -14,7 +14,12 @@ export interface Idea {
 }
 
 export interface Survey {
-  name: string;
+  /** The survey taken. */
+  id: string;
+  /** One taking of it. */
+  sessionId?: string;
+  /** Which version of the survey this is — the file its ideas came from. */
+  instance?: string;
   title?: string;
   instructions: string;
   ideas: Idea[];

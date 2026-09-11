@@ -12,7 +12,8 @@ import { boundsLabel, resolveSelection } from "./survey";
 import type { Survey } from "./survey";
 
 const survey = (over: Partial<Survey> = {}): Survey => ({
-  name: "you-can-choose",
+  id: "you-can-choose",
+  instance: "you-can-choose-7",
   // The compiler guarantees this field, so the fixture carries it too — the view is a
   // projection of the compiled record and must not be typed more loosely than one.
   instructions: "Below is a list of ideas. Please choose the ones that matter most to you.",

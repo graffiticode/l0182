@@ -5,9 +5,9 @@ repository.
 
 ## What this is
 
-L0182 is a Graffiticode dialect for **collective-intelligence surveys**. A program is a named
-set of ideas someone is asked to choose between, and — once something has answered — the
-response to it: the ideas chosen in priority order, plus one new idea that was not in the set.
+L0182 is a Graffiticode dialect for **taking collective-intelligence surveys**. A program names
+the survey being taken and — once something has answered — carries the response to it: the ideas
+chosen in priority order, plus one new idea that was not in the set.
 
 Three commitments the rest of the design follows from:
 
@@ -15,9 +15,11 @@ Three commitments the rest of the design follows from:
   or submission, and there is no player anywhere in this repo. Anything that would reintroduce
   a survey-taking flow here is the wrong direction; that belongs to a different language or a
   different client reading this record.
-- **The ideas come from a dataset, read by the program itself.** `ideas fetch "<url>"` reads JSON
-  or CSV at compile time. L0182 holds no pool, samples nothing, and re-reads nothing once a
-  program has compiled.
+- **The survey is not in the language either.** A program says `id "you-can-choose"` and nothing
+  else about it: the ideas, the title, the instructions and the bounds are read from the back end
+  by the compiler (`src/source.ts`). There is no word for a set of ideas, and adding one would
+  hand the survey to whoever takes it. The client does not see the survey until the first turn
+  instantiates it.
 - **The code is the interface.** A person writes the response in the console's editor; an agent
   writes it through `update_item`. They are the same client, so both produce the identical
   record and there is nothing to keep in parity. The view only renders it.
@@ -45,6 +47,9 @@ npm run -w packages/view dev   # the renderer on Vite alone; /dev.html is the fi
 
 Node 22 (`.nvmrc`, and `engines` refuses lower), npm workspaces.
 
+`packages/core/data/` holds the surveys themselves, beside `spec/` rather than inside it so that
+nothing serving `spec/` can serve a survey by accident.
+
 `npm run assemble` wipes and repopulates `packages/api/static/` from `core/dist/static` and
 `view/dist-embed`. It is not incremental — a stale file cannot survive it, which is the point.
 
@@ -60,9 +65,14 @@ npm run -w packages/core test -- src/survey.test.ts
 npm run -w packages/core test -- src/survey.test.ts -t "selection"
 ```
 
-Core tests compile through `src/harness.ts` — `compile(src)` and `errorOf(src)`, which run the
-real parser against the real lexicon and append the `..` terminator if it is missing. A new test
-that wires the parser itself is doing by hand what every other test gets from there.
+Core tests compile through `src/harness.ts` — `compile(src, values)` and `errorOf(src, values)`,
+which run the real parser against the real lexicon, append the `..` terminator if it is missing,
+and fold `values` in as public values so `get-val-public "itemId"` resolves the way the console
+resolves it. A new test that wires the parser itself is doing by hand what every other test gets
+from there.
+
+`survey.test.ts` serves the survey from a `setSource` fixture; `source.test.ts` is the one suite
+that reads the real `data/` directory, because a stub there would test the stub.
 
 **`packages/api`'s suite reads the assembled `static/` directory**, so `npm run build` has to
 have run at least once or `app.test.ts` fails on a missing asset rather than on anything real.
@@ -102,8 +112,9 @@ cannot be used to change either.
 Three workspaces on the published `@graffiticode/l0000` and `@graffiticode/l0000-view`.
 
 - **`packages/core`** (`@graffiticode/l0182`) — the language. `attributes.ts` is the vocabulary
-  as data; `lexicon.ts` and `compiler.ts` both generate from it; `survey.ts` is the assembly and
-  every rule; `spec/` is what agents read.
+  as data; `lexicon.ts` and `compiler.ts` both generate from it; `source.ts` finds the survey;
+  `survey.ts` is the assembly and every rule; `spec/` is what agents read and `data/` is what the
+  compiler reads.
 - **`packages/api`** (`@graffiticode/api-l0182`, private) — Express: `POST /compile`, `GET /form`,
   a health check at `/`, and the assembled static assets. Its middleware order and cache headers
   are load-bearing — see "What `app.ts` serves".
@@ -168,10 +179,10 @@ the fix is a regression even when the program still errors.
 they reach the output — so the compiled record is identical whichever was written and the input
 form costs nothing downstream.
 
-**Text is not a convenience. It is the only notation that works for a fetched set**, and leaving
-it out was a real bug rather than a missing nicety. A program says `ideas fetch "<url>"`, so the
-set does not exist until the program compiles — which means whoever writes the response, a person
-or the code generator, has never seen an id or a position. A guessed position that lands in range
+**Text is not a convenience. It is the only notation whoever answers can actually use**, and
+leaving it out was a real bug rather than a missing nicety. The ideas live in the survey, so they
+do not exist until the program compiles — which means whoever writes the response, a person or
+the code generator, has never seen an id or a position. A guessed position that lands in range
 compiles cleanly and records the wrong ideas, silently. That shipped: an `update_item` asking for
 three ideas by name produced `selection [2 3 5]` and recorded three different ones.
 
@@ -187,52 +198,57 @@ Three smaller rules hold it together:
   position _is_ the number in the derived id. The range message says where counting starts,
   because an off-by-one records a different ranking rather than failing.
 
-### `fetch` is L0182's own, and narrower than L0170's on purpose
+### A survey is looked up, drawn, and held by session
 
-`src/fetch.ts`. It exists because the console's composition pipeline does not fit: `ideas data use
-"0170"` binds through `options.data`, and a dedicated word evaluating to a value touches neither
-that channel nor the planner. It also means no console change is needed for a survey to get its
-ideas — which matters, because **the console has no mechanism for resolving a name into data and
-inlining it at generation time**; composition there is exclusively a live `data use` binding
-producing a `+`-joined task id.
+`src/source.ts`. A program names a survey; the compiler finds it in `packages/core/data/`, a
+directory hard-coded relative to the module (`new URL("../data/", import.meta.url)`) so it
+resolves identically from `dist/`, from `src/` under vitest, and inside the Docker image.
 
-Modelled on `l0170/packages/api/src/compiler.js:215`, and deliberately different in four ways.
-Each is a hole in the original, so do not "simplify" toward it:
+- **A survey id names a SET of files.** `you-can-choose-1.json` … `you-can-choose-12.json` are
+  versions of one survey, and `id "you-can-choose"` draws one of them **without replacement**: a
+  drawn version is marked taken until every version has been taken, at which point the marks
+  clear and the cycle restarts. `id "you-can-choose-7"` names a version outright — no draw, no
+  mark — and that is what pins an answer to the version it answers.
+- **`<id>-<n>` is the whole naming rule**, so `you-can` cannot match `you-can-choose-3`, and an
+  id is validated against `[a-z0-9][a-z0-9-]*` **before** any disk access: nothing resembling a
+  path reaches `readFileSync`.
+- **`session-id` is what survives the answering turn.** Adding a response rewrites the program,
+  so it compiles again, and a second draw would check the answer against ideas its taker never
+  saw. The word is written `session-id get-val-public "itemId"`, which the console resolves at
+  PARSE time (`console/src/lib/code-generation/generate-for-request.ts:516`) — so from turn two
+  the program carries the literal id and `drawn: Map<session, instance>` hands back the same
+  version. L0158 uses the same mechanism.
+- **An unknown session DRAWS rather than refusing.** Refusing was considered and is wrong: a
+  first turn may legitimately arrive with its answer already in it ("answer the you-can-choose
+  survey with …" reaches the compiler as one program), and from inside the source a brand-new
+  session and a forgotten one are indistinguishable.
+- **An empty `session-id` is no session.** That is what an unresolved `get-val-public` folds to,
+  and honouring it would hand every such compile one shared version.
 
-- **A timeout** (`AbortSignal.timeout`). L0170 passes no options to `bent`, so a server that
-  accepts the connection and dribbles the body holds a compile open indefinitely.
-- **A scheme and host check.** L0170 hands `String(v0).trim()` straight to the client and its
-  Checker validates nothing, so an authored program can make the language server GET
-  `http://169.254.169.254/…` — the cloud metadata endpoint, which issues service-account tokens —
-  and read the result back through the compiled output. Loopback and link-local are refused here.
-- **`dynamicTyping` off on CSV.** It would turn an `id` column of "1", "2" into numbers, and an
-  idea's id is a string — which is exactly what tells `selection ["1"]` (an id) from
-  `selection [1]` (a position) apart.
-- **JSON is tried first unless something actually says CSV.** `Papa.parse` almost never throws, so
-  a JSON endpoint answering 200 with an HTML sign-in page parses "successfully" into a one-column
-  table. Preferring CSV would turn that failure into a plausible-looking survey.
+Two limits, both inherited from how the platform runs compiles rather than from this file. Both
+are documented in `spec/` rather than fixed, and fixing either needs a store this language server
+does not have:
 
-Two properties follow from the platform rather than from this file:
+- **The memory is process-local.** Cloud Run runs up to 20 instances and scales to zero when
+  idle, so a session that answers some minutes later may land on a server that never drew for it
+  and be given another version. Nothing depends on `--max-instances=1`, and it must not.
+- **Identical programs share one compile.** A task id is content-addressed over the program
+  (`graffiticode/packages/api/src/storage/tasks.js:6-9`, `data.js:8-11`), with no TTL, so two
+  takers whose programs are textually identical get one stored compile and one version between
+  them. `session-id` is what makes each item's program distinct, which is the other half of why
+  it is written in every program.
 
-- **The fetch happens once, ever.** A task id is content-addressed over code+data, so the API
-  serves a stored compile rather than calling the language again
-  (`graffiticode/packages/api/src/data.js:8-11`) — no TTL, no invalidation. A program freezes its
-  set at first compile, which is what a survey wants: a response only means anything against the
-  ideas it was shown.
-- **It cannot authenticate**, and that is not a casual fix. A credential would have to go in the
-  URL, and the URL lives in the task AST, the compile cache and the editor.
-
-**`setFetcher` is the test seam**, mirroring `setSchemaFetcher` in the base language. `docs.test.ts`
-installs a stub, which is what lets the documented programs use a real-looking address without the
-documentation gate depending on a third party's uptime.
+**`setSource` is the test seam**, mirroring `setSchemaFetcher` in the base language, and it is
+also the shape any other back end plugs into: a survey does not have to come from a file, and
+nothing in the language changes if it stops doing so.
 
 ### Ideas keep the service's ids when they have them
 
-`ideas` accepts a bare string or a `{id, text}` record. An entry that names its own id keeps it;
-one that does not is numbered positionally, `i0` upward. Both forms exist for one reason: code
-generation inlines whatever the L0170 fetch returned, and when that carried ids they have to
-survive into `selection`, because a selection of positional ids means nothing back at the
-service the set came from.
+A survey's data holds a bare string or a `{id, text}` record per idea. An entry that names its
+own id keeps it; one that does not is numbered positionally, `i0` upward. Both forms exist for
+one reason: a survey comes from somewhere, and when that somewhere carried ids they have to
+survive into `selection`, because a selection of positional ids means nothing back at the service
+the set came from.
 
 ### `PROG` ignores `options.data`, deliberately
 
@@ -403,15 +419,17 @@ accurately, so re-read `scope.json` whenever the language changes.
 `authoring_guide`, and the build **fails** if it is missing or under 100 chars. Edit the
 Overview, not the JSON.
 
-**`spec/ideas*.json` and `spec/ideas*.csv` are the sample datasets**, and they are NOT served by
-this language server — `build-static.js` deliberately excludes them, and `app.test.ts` asserts a 404. They are fetched from raw.githubusercontent.com, because a survey's ideas come from
-somewhere else by definition and hosting the sample inside the language would model the opposite.
-They differ in shape on purpose (records with ids, bare strings, an id column, a text-only CSV):
-a corpus of one shape teaches the generator one shape. `docs.test.ts` compiles every one of them
-as a literal set, so a file that stops being a valid set fails the build rather than a prompt.
+**`packages/core/data/` holds the surveys**, a peer of `spec/` rather than inside it, and they
+are NOT served by this language server — `build-static.js` never reads `data/`, and `app.test.ts`
+asserts a 404. Serving them would let whoever takes a survey read it, or a client render it,
+before taking it, which is the thing the split exists to prevent.
 
-Note that raw GitHub serves every file as `text/plain`, which is why `fetch` falls back to the
-URL suffix — for `ideas.json` and `ideas.csv` that suffix is the only discriminator.
+Every file is `<survey-id>-<n>.json|csv`, and `docs.test.ts` compiles each one as a program, so a
+file that stops being a valid survey fails the build rather than somebody's first prompt. It also
+asserts every id the docs name is installed. They differ in shape on purpose (records with ids,
+bare strings, a text-only CSV): a corpus of one shape teaches the generator one shape. The
+documented ANSWER examples all name a single-version survey — one with several draws a version at
+random, so a documented selection would match only sometimes.
 
 **Two of the served assets are not the file you edited.** `build-static.js` concatenates
 L0000's `instructions.md` with L0182's, and `lexicon.json` is the merged base + L0182 lexicon,
@@ -421,9 +439,8 @@ in mind.
 
 ## Adding a word
 
-1. Add its row to `attributeFields`. Arity 1; there is no other option. (A word that evaluates to
-   a value rather than a keyed record — `fetch` is the only one — is hand-written in `lexicon.ts`
-   and `compiler.ts` instead.)
+1. Add its row to `attributeFields`. Arity 1; there is no other option. Every L0182 word is a row
+   there now — only the two containers are hand-written.
 2. Add it to the container's list in `validAttributes`.
 3. Handle it in `buildSurvey` or `buildResponse` in `survey.ts`, with its default and its error
    messages — each naming the fix.
@@ -446,12 +463,19 @@ obvious next feature request re-proposes one of them:
 - **An in-memory mock backend** with a 20-idea seed pool, least-shown-first sampling over a
   rotating window, and per-actor-class tallies. It was the only reason for `--max-instances=1`.
 - **An adaptive sampler**, `sample N`, and the whole "the ideas are not authored, they live in
-  the pool" model. The ideas are authored now — by code generation, not by hand.
+  the pool" model. The ideas are a survey's own now, read from `data/` — never authored, and
+  never sampled within a version.
 - **A five-screen React player** (`start`/`select`/`rank`/`contribute`/`results`/`thanks`), its
   `KINDS` registry, drag-and-drop ranking, and the `navigate`/`response` action split.
 - **`participants` and `audience`**, the human-vs-agent gate and the per-population ranking.
   Both clients are the same client now, so there is no population to separate.
 - **`scripts/post-response.mjs`**, which posted a response as task data. Responses are code.
+- **The words that authored a survey** — `ideas`, `title`, `instructions`, `min-choices`,
+  `max-choices`, and `name` — plus **`fetch`** (`src/fetch.ts`, its scheme and host checks, its
+  timeout, and the JSON-before-CSV rule) and the whole "point the program at a dataset" model.
+  The survey comes from the back end; a program that could write any of this could edit the
+  survey it is taking. The parse errors they now produce are the point: they are out of the
+  lexicon, not merely refused by `survey`.
 
 If a live pool, cross-participant aggregation or an interactive flow is wanted, it is a service
 plus a different client — not a return of these.
@@ -469,23 +493,26 @@ not be back-ported at arity 2 because L0180 already had `title` at arity 1 insid
 
 ## Not built yet
 
-Aggregating across responses — a group ranking, a tally, or any live result. Drawing a sample:
-`fetch` reads whatever list the dataset serves, whole and in order. Re-reading a dataset a program
-has already compiled against. Authenticating to one. An interactive survey-taking flow. Conventional questionnaire items — Likert, demographics, satisfaction ratings, branching
-logic. Ranking objects other than a line of text. Any analysis of the responses collected.
-Enforced one-response-per-person.
+Aggregating across responses — a group ranking, a tally, or any live result. Authoring a survey:
+the ideas, the wording and the bounds belong to `data/` and no word writes them. Reading a survey
+from anywhere but the filesystem, or authenticating to one — `setSource` is where that would go.
+A durable session→version memory (see the limits above). Sampling within a survey: a version is
+served whole and in order. An interactive survey-taking flow. Conventional questionnaire items —
+Likert, demographics, satisfaction ratings, branching logic. Ranking objects other than a line of
+text. Any analysis of the responses collected. Enforced one-response-per-person.
 
 ## Related repos
 
 - `l0000` — the base language and the View harness. Both are npm dependencies, not workspaces.
-- `l0170` — the fetch-and-transform dialect `src/fetch.ts` is modelled on. Not a dependency and
-  not an upstream: L0182 reads its own dataset, because none of L0170's other operations are
-  wanted and a pipeline binding would not fit. Read its `FETCH` before changing ours.
+- `l0158` — the dialect `session-id get-val-public "itemId"` is borrowed from; its
+  `set-var "lrn-id" get-val-public "itemId"` is the same mechanism, and its instructions show how
+  hard a generator has to be told to copy such a line verbatim.
 - `console/docs/language-authoring-style.md` — the style spec this dialect follows.
 - `console/src/lib/languages.ts` — the catalog. **L0182 must be registered here to reach any
   user.** Its `routingHint` is rewritten on branch `l0182-routing-hint`; keep its `do NOT` and
   `never` clauses when editing, or L0180 starts absorbing survey requests. L0182 declares no
-  `composesWith` and should not: it reads its own dataset rather than binding an upstream.
+  `composesWith` and should not: the compiler reads the survey itself rather than binding an
+  upstream.
 - `graffiticode-mcp-server` — its `open_survey` / `answer_survey` tools target the deleted proxy.
   The agent path is now plain `create_item` / `update_item`, which is exactly the path a person
   uses.

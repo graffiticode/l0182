@@ -6,7 +6,7 @@
  * retrieves from examples.md, so a wrong example is reproduced verbatim into generated
  * programs — and unlike a wrong sentence, it is learned.
  *
- * Read paths are relative, so these run with packages/core as the cwd (`npm run -w
+ * Read paths are relative (spec/ and data/), so these run with packages/core as the cwd (`npm run -w
  * packages/core test`), which is what the workspace script does.
  */
 import { test, describe, expect } from "vitest";
@@ -16,25 +16,15 @@ import Papa from "papaparse";
 import Ajv from "ajv/dist/2020.js";
 import { parser } from "@graffiticode/parser";
 import { lexicon as base } from "@graffiticode/l0000";
-import { compiler, lexicon, setFetcher, validAttributes } from "./index.js";
+import { compiler, lexicon, loadSurvey, validAttributes } from "./index.js";
 
-// Documented programs use the real `fetch` form, because that is what an author writes and what
-// the generator learns from. Serving them from a stub is what keeps this gate a test of our
-// parser and our prose rather than of a third party's uptime.
-// The stub serves the sample dataset the URL actually names, read from spec/. An inline copy
-// drifted from the file it stood in for — ten ideas against the real twelve — so an example
-// naming a real idea by its text failed here while compiling fine against the live address.
-setFetcher(async (input) => {
-  const name = String(input).split("/").pop() || "ideas.json";
-  const body = readFileSync(join("spec", name), "utf-8");
-  const type = name.endsWith(".csv") ? "text/csv" : "application/json";
-  return {
-    ok: true,
-    status: 200,
-    headers: { get: () => type },
-    text: async () => body,
-  } as any;
-});
+// Documented programs run against the REAL surveys in data/, with no stub anywhere. A program
+// here is exactly what the generator will write, and what it names has to exist — an example
+// naming a survey nobody installed, or an idea no version of it holds, is a program that fails
+// for every user who copies it.
+//
+// That is why documented ANSWERS use a survey with a single version: a survey with several
+// draws one at random, so a selection written here would match only sometimes.
 
 /** Files whose fenced blocks are programs. examples.md holds prompts and is checked separately. */
 const SPEC_FILES = ["spec/spec.md", "spec/instructions.md"];
@@ -64,8 +54,12 @@ function blocks(path: string): string[] {
  */
 const isProgram = (src: string): boolean => !!src && src.trim().endsWith("..");
 
-async function compileSrc(src: string) {
-  const code: any = await parser.parse(182, src, lexicon);
+async function compileSrc(src: string, itemId = "docs") {
+  // Public values are folded in at parse time, exactly as the console does it, so a documented
+  // `session-id get-val-public "itemId"` reaches the compiler as a value.
+  const code: any = await parser.parse(182, src, lexicon, {
+    GET_VAL_PUBLIC: (name: string) => (name === "itemId" ? itemId : ""),
+  });
   const err: any = Object.values(code).find((n: any) => n && n.tag === "ERROR");
   if (err) throw new Error(`parse error: ${JSON.stringify(err.elts)}`);
   return await new Promise((res, rej) =>
@@ -98,6 +92,14 @@ describe("spec programs", () => {
     }
   });
 
+  test("the starter template carries the session, which is what holds an answer to its survey", () => {
+    // A program that omits it draws again on the turn that answers, and the answer is then
+    // checked against ideas its taker never saw.
+    expect(readFileSync("spec/template.gc", "utf-8")).toContain(
+      'session-id get-val-public "itemId"',
+    );
+  });
+
   test("the starter template shows the WHOLE shape, survey and response", async () => {
     // It is what the generator starts from, so a template that stops at the survey teaches half
     // the language — and the half it leaves out is the one a client always has to produce.
@@ -115,8 +117,8 @@ describe("spec programs", () => {
   });
 
   test("the starter template names its ideas by text, not by id or position", async () => {
-    // The template fetches its ideas, so the ids do not exist when the response is written.
-    // Copying a positional selection out of here is exactly the mistake that shipped.
+    // The ideas live in the survey, so whoever writes the response has not seen an id or a
+    // position. Copying a positional selection out of here is exactly the mistake that shipped.
     const src = readFileSync("spec/template.gc", "utf-8");
     const selection = src.match(/selection \[([^\]]*)\]/)?.[1] ?? "";
     expect(selection.trim()).toBeTruthy();
@@ -187,21 +189,22 @@ describe("schema.json describes what the compiler actually emits", () => {
 
   test("a survey with a full response validates", async () => {
     const out: any = await compileSrc(
-      `survey [ name "n" title "T" ideas [{id: "a3" text: "one"} "two" "three"] min-choices 1 max-choices 2
-         response [ selection ["a3" "i2"] idea "a new one" ] ]..`,
+      `survey [ id "team-retro-1" session-id get-val-public "itemId"
+         response [ selection ["t3" "cut the build time in half"] idea "a new one" ] ]..`,
     );
-    expect(out.response).toEqual({ selection: ["a3", "i2"], idea: "a new one" });
+    expect(out.response).toEqual({ selection: ["t3", "t2"], idea: "a new one" });
+    expect(out.survey.sessionId).toBe("docs");
     check(out, "a full response");
   });
 
   test("a survey awaiting a response validates", async () => {
-    const out: any = await compileSrc(`survey [ name "n" ideas ["one" "two"] ]..`);
+    const out: any = await compileSrc(`survey [ id "team-retro-1" ]..`);
     expect(out.response).toBeUndefined();
     check(out, "no response");
   });
 
   test("rejects output the compiler could not have produced", async () => {
-    const out: any = await compileSrc(`survey [ name "n" ideas ["one" "two"] ]..`);
+    const out: any = await compileSrc(`survey [ id "team-retro-1" ]..`);
     out.survey.nonsense = true;
     expect(validate(out), "additionalProperties:false is not doing its job").toBe(false);
   });
@@ -231,21 +234,20 @@ describe("the container tables match validAttributes", () => {
   });
 });
 
-describe("the sample datasets", () => {
-  // spec/ideas*.json and spec/ideas*.csv are the sets the example prompts point at, served from
-  // raw.githubusercontent.com. A prompt naming one has to be runnable, which holds only while
-  // every file is a set L0182 actually accepts — so each is compiled here as a literal.
+describe("the surveys installed in data/", () => {
+  // These are what `id "…"` reaches, so each one has to be a survey L0182 actually accepts —
+  // compiled here as a program, the same way a taker reaches it. A file that stops being a
+  // valid set fails the build rather than somebody's first prompt.
   //
   // They vary on purpose: records with ids and bare strings, an id column and a text-only CSV,
   // and a quoted field carrying a comma. That spread is the point; a corpus of one shape teaches
   // the generator one shape.
-  const files = readdirSync("spec")
-    .filter((f) => /^ideas.*\.(json|csv)$/.test(f))
-    .sort();
+  const files = readdirSync("data").sort();
+  const instances = files.map((f) => f.replace(/\.(json|csv)$/, ""));
 
-  /** The ideas themselves, whether the file is a bare list or an envelope carrying title/instructions. */
+  /** The ideas themselves, whether the file is a bare list or an envelope with title/instructions. */
   const read = (f: string): any[] => {
-    const text = readFileSync(join("spec", f), "utf-8");
+    const text = readFileSync(join("data", f), "utf-8");
     if (f.endsWith(".json")) {
       const parsed = JSON.parse(text);
       return Array.isArray(parsed) ? parsed : parsed.ideas;
@@ -258,54 +260,70 @@ describe("the sample datasets", () => {
   const envelope = (f: string): any =>
     f.endsWith(".json")
       ? (() => {
-          const p = JSON.parse(readFileSync(join("spec", f), "utf-8"));
+          const p = JSON.parse(readFileSync(join("data", f), "utf-8"));
           return Array.isArray(p) ? null : p;
         })()
       : null;
 
-  const literal = (entry: any) =>
-    typeof entry === "string"
-      ? JSON.stringify(entry)
-      : `{${Object.entries(entry)
-          .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
-          .join(" ")}}`;
-
-  test("there are several, in more than one shape", () => {
+  test("every file is a version of some survey", () => {
+    // `<id>-<n>` is the whole naming rule, and a file outside it is invisible to `id "…"` —
+    // installed, never reachable, and silent about it.
     expect(files.length).toBeGreaterThan(3);
-    const parsed = files.map(read);
+    for (const f of files)
+      expect(f, `${f} is not <survey-id>-<n>.json|csv`).toMatch(
+        /^[a-z0-9][a-z0-9-]*-\d+\.(json|csv)$/,
+      );
+  });
+
+  test("at least one survey has several versions, which is what the draw is for", async () => {
+    const byId = new Map<string, number>();
+    for (const i of instances) {
+      const id = i.replace(/-\d+$/, "");
+      byId.set(id, (byId.get(id) || 0) + 1);
+    }
     expect(
-      parsed.some((set) => typeof set[0] === "string"),
+      [...byId.values()].some((n) => n > 1),
+      "no survey has more than one version",
+    ).toBe(true);
+  });
+
+  test("the shapes vary, because a corpus of one shape teaches one shape", () => {
+    const sets = files.map(read);
+    expect(
+      sets.some((set) => typeof set[0] === "string"),
       "no bare-string set",
     ).toBe(true);
     expect(
-      parsed.some((set) => typeof set[0] === "object" && set[0].id),
+      sets.some((set) => typeof set[0] === "object" && set[0].id),
       "no set with ids",
     ).toBe(true);
     expect(
-      parsed.some((set) => typeof set[0] === "object" && !set[0].id),
+      sets.some((set) => typeof set[0] === "object" && !set[0].id),
       "no text-only CSV",
     ).toBe(true);
   });
 
-  for (const f of files) {
-    test(`${f} is a set L0182 accepts`, async () => {
-      const set = read(f);
-      expect(set.length, `${f} has too few ideas`).toBeGreaterThan(1);
-      const out: any = await compileSrc(
-        `survey [ name "sample" ideas [ ${set.map(literal).join(" ")} ] ]..`,
-      );
+  for (const instance of instances) {
+    test(`${instance} is a survey L0182 accepts`, async () => {
+      const file = files.find((f) => f.startsWith(`${instance}.`))!;
+      const set = read(file);
+      expect(set.length, `${file} has too few ideas`).toBeGreaterThan(1);
+      // Named outright, so this reads the file under test rather than drawing a sibling.
+      const out: any = await compileSrc(`survey [ id "${instance}" ]..`);
+      expect(out.survey.instance).toBe(instance);
       expect(out.survey.ideas).toHaveLength(set.length);
     });
   }
 
-  test("ideas.json and ideas.csv are the same set, in the same order", () => {
-    expect(read("ideas.csv")).toEqual(read("ideas.json"));
+  test("a survey id reaches one of its versions", async () => {
+    const loaded = await loadSurvey("you-can-choose", {});
+    expect(instances).toContain(loaded.instance);
   });
 
-  // The words a participant reads are part of the sample, not an afterthought: a prompt that
-  // points at a dataset and says nothing else must still produce a page with a heading and an
-  // explanation. A JSON sample that lost its envelope would silently go back to a bare list.
-  test("every JSON sample carries a title and instructions", () => {
+  // The words a participant reads are part of the survey, not an afterthought: a program that
+  // names a survey and says nothing else must still produce a page with a heading and an
+  // explanation. A JSON survey that lost its envelope would silently go back to a bare list.
+  test("every JSON survey carries a title and instructions", () => {
     const jsons = files.filter((f) => f.endsWith(".json"));
     expect(jsons.length).toBeGreaterThan(3);
     for (const f of jsons) {
@@ -314,18 +332,33 @@ describe("the sample datasets", () => {
       expect(typeof env.title, `${f} has no title`).toBe("string");
       expect(env.title.trim().length, `${f} has an empty title`).toBeGreaterThan(0);
       expect(typeof env.instructions, `${f} has no instructions`).toBe("string");
-      expect(
-        env.instructions.trim().length,
-        `${f} has empty instructions`,
-      ).toBeGreaterThan(20);
+      expect(env.instructions.trim().length, `${f} has empty instructions`).toBeGreaterThan(20);
     }
   });
 
   test("a CSV exercises a quoted field, because an idea will contain a comma", () => {
     const csvs = files.filter((f) => f.endsWith(".csv"));
-    expect(csvs.some((f) => /,"[^"]*,[^"]*"/.test(readFileSync(join("spec", f), "utf-8")))).toBe(
-      true,
-    );
+    expect(
+      csvs.some((f) => /(^|,)"[^"]*,[^"]*"/m.test(readFileSync(join("data", f), "utf-8"))),
+    ).toBe(true);
+  });
+
+  test("every survey the docs name is installed", () => {
+    // A documented id that nobody installed is a program that fails for whoever copies it.
+    const docs = [
+      readFileSync("spec/instructions.md", "utf-8"),
+      readFileSync("spec/spec.md", "utf-8"),
+      readFileSync("spec/examples.md", "utf-8"),
+      readFileSync("spec/usage-guide.md", "utf-8"),
+      readFileSync("spec/template.gc", "utf-8"),
+    ].join("\n");
+    const ids = new Set<string>();
+    for (const m of docs.matchAll(/\bid "([a-z0-9][a-z0-9-]*)"/g)) ids.add(m[1]);
+    expect(ids.size, "the docs name no survey at all").toBeGreaterThan(1);
+    for (const id of ids) {
+      const exists = instances.some((i) => i === id || i.replace(/-\d+$/, "") === id);
+      expect(exists, `the docs name \`${id}\`, which is not installed in data/`).toBe(true);
+    }
   });
 });
 

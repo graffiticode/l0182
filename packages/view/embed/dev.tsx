@@ -23,7 +23,9 @@ const ideas = [
 ];
 
 const survey = {
-  name: "you-can-choose",
+  id: "you-can-choose",
+  sessionId: "7gMeEzUYkHqm3PDRrI8i",
+  instance: "you-can-choose-7",
   title: "You Can Choose",
   ideas,
   minChoices: 1,
@@ -46,7 +48,7 @@ const CASES: Array<[string, any, any[]]> = [
   [
     "A compile error",
     {},
-    [{ message: "survey: needs `name`, the survey these ideas were drawn from." }],
+    [{ message: 'survey: needs `id`, the survey being taken, e.g. survey [id "you-can-choose"].' }],
   ],
   ["Nothing compiled", {}, []],
 ];

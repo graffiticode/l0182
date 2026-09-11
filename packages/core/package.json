@@ -4,7 +4,7 @@
   },
   "name": "@graffiticode/l0182",
   "version": "0.1.0",
-  "description": "L0182 language core — collective-intelligence surveys",
+  "description": "L0182 language core \u2014 collective-intelligence surveys",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,6 +17,7 @@
   },
   "files": [
     "dist",
+    "data",
     "spec"
   ],
   "scripts": {

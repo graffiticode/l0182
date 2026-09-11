@@ -1,9 +1,0 @@
-id,text
-t1,fix the flaky tests before adding features
-t2,cut the build time in half
-t3,write smaller pull requests
-t4,timebox standup to ten minutes
-t5,rotate the on-call fairly
-t6,"pair more often, especially on unfamiliar code"
-t7,keep a written decision log
-t8,retire the two services nobody owns

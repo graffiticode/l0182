@@ -2,44 +2,87 @@
 
 # L0182
 
-L0182 is a **survey record** for collective intelligence: a named set of ideas someone is asked
-to choose between, and the response to it — the ideas chosen, in priority order, plus one new
-idea that was not in the set.
+L0182 is a **survey record** for collective intelligence: the ideas someone was asked to choose
+between, and the response to them — the ideas chosen, in priority order, plus one new idea that
+was not in the set.
 
-An L0182 program is one survey and at most one response to it.
+An L0182 program is one taking of one survey and at most one response to it.
 
 ## Structure
 
 ```
 survey [
-  name "you-can-choose"
-  ideas fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json"
+  id "you-can-choose"
+  session-id get-val-public "itemId"
 ]..
 ```
 
-The ideas are **given, not invented**. They belong to the survey the program names, and there
-are two ways to have them: `fetch` reads them from the dataset that holds them when the program
-compiles, or they are written out in full when they are already in hand. Neither is a fallback
-for the other. What you edit afterwards is the response.
+That is a whole program. The ideas are **given, never written**: they belong to the survey, which
+the compiler reads when the program compiles. Nothing in the language describes a set of ideas,
+a title, an instruction line or a bound — a survey cannot be authored here at all, and whoever
+takes one has not seen it before the first compile. What is written afterwards is the response.
 
-There is no flow in this language. It does not describe screens, steps, navigation or
-submission, and nothing in it takes a participant through anything. The code is the interface:
-a person writes it in the console's editor, an agent writes it through `update_item`, and both
+There is no flow in this language either. It does not describe screens, steps, navigation or
+submission, and nothing in it takes a participant through anything. The code is the interface: a
+person writes it in the console's editor, an agent writes it through `update_item`, and both
 produce the same record.
 
-## Fetching the set
+## Taking a survey
 
-`fetch` reads a dataset over HTTP and evaluates to it, so `ideas fetch "…"` is the ordinary way a
-set arrives. It reads **JSON**:
+`id` names a survey the language server holds — `you-can-choose`, `team-retro`, `city-budget`,
+`product-features`, `school`. An id that does not exist is a compile error listing the ones that
+do.
 
-```json
-[
-  { "id": "a3", "text": "protect voting rights" },
-  { "id": "b7", "text": "affordable housing" }
-]
+A survey may have **several versions**, one per file: `you-can-choose-1`, `you-can-choose-2`, and
+so on, each a different set of ideas drawn from the same subject. Naming the survey takes one of
+them at random; which one is recorded as `instance` in the compiled record. Versions are drawn
+without replacement, so successive takings work through them rather than piling onto one.
+
+```
+survey [ id "you-can-choose-7" ]..
 ```
 
-or **CSV**, where the header row names the fields and each row becomes a record:
+Naming a version outright takes exactly that one, with no draw.
+
+### The session
+
+`session-id` identifies one taking of the survey, and every program should carry it, written
+exactly as:
+
+```
+survey [ id "you-can-choose" session-id get-val-public "itemId" ]..
+```
+
+`get-val-public` resolves at parse time, so the program carries the value from then on. A survey
+is drawn once per session: the turn that adds a response comes back to the same session and gets
+the same version, which is what keeps the answer with the ideas its taker actually saw.
+
+That memory lives in the language server's process. A restart, or a second server instance, loses
+it and the session is drawn for again. Naming the version as the id is what makes an answer
+immune.
+
+## What a survey holds
+
+A survey's data is a list of ideas, or a record carrying the words a participant reads alongside
+them:
+
+```json
+{
+  "title": "What Matters Most?",
+  "instructions": "Below is a list of things people have said they'd like their representatives to focus on. Please select the issues that matter most to you.",
+  "ideas": [
+    { "id": "a3", "text": "protect voting rights" },
+    { "id": "b7", "text": "affordable housing" }
+  ]
+}
+```
+
+An idea is a line of text, or a record naming the id the originating service knows it by. An
+entry that names its own id keeps it — a selection of positional ids would mean nothing back at
+that service — and one that does not is numbered by position, `i0` upward. A set needs at least
+two ideas, and no two may repeat the same text or share an id.
+
+CSV works too, where the header row names the fields and each row becomes a record:
 
 ```
 id,text
@@ -47,100 +90,38 @@ a3,protect voting rights
 b7,"affordable housing, and enough of it"
 ```
 
-Both give the same set. Columns the language has no use for are ignored, and a numeric-looking
-`id` stays a string — an idea's id always is one.
+A numeric-looking `id` stays a string; an idea's id always is one. A CSV carries no title or
+instructions, so a survey stored that way falls back to a generic instruction line.
 
-Three properties worth knowing:
-
-- **It happens once.** A task id is content-addressed over its code, so the compiled result is
-  stored and served rather than recompiled. A program freezes its set at first compile, which is
-  what a survey wants: a response only means anything against the ideas it was shown. Editing the
-  program is what re-reads the dataset.
-- **It sends no credentials**, so the address has to be public. A URL carrying a key would be
-  stored in the program itself.
-- **It cannot reach inside the deployment.** Loopback, link-local and the cloud metadata endpoint
-  are refused, as is any scheme but `http` and `https`.
-
-A dataset that is neither JSON nor CSV, is empty, or answers with an error is a compile error
-naming the address — never a survey with no ideas in it.
-
-L0182 publishes several sample sets under `https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/` — `ideas.json` and `ideas.csv` (twelve civic
-priorities), plus `ideas-team.csv`, `ideas-city.json`, `ideas-product.json` and
-`ideas-school.csv` — so an example is something you can actually run. They differ in shape on
-purpose: records with ids, bare strings, an id column, a text-only CSV.
-
-## Writing the ideas out
-
-A set may also be written out in full, for ideas already in hand rather than behind an address.
-Each entry is a line of text, or a record naming the id the service knows it by.
-
-```
-survey [
-  name "you-can-choose"
-  title "You Can Choose"
-  ideas [
-    {id: "a3" text: "protect voting rights"}
-    {id: "b7" text: "universal healthcare system"}
-    {id: "c1" text: "affordable housing"}
-  ]
-]..
-```
-
-An entry that names its own id keeps it; one that does not is numbered by position, `i0`
-upward. Keep the service's ids when the fetch returned them — a selection of positional ids
-means nothing back at the service the set came from.
-
-A set needs at least two ideas, and no two may repeat the same text or share an id.
-
-## Selection bounds
-
-```
-survey [
-  name "priorities"
-  ideas ["clean air and water" "affordable housing" "invest in public transit"]
-  min-choices 1
-  max-choices 2
-]..
-```
-
-`min-choices` defaults to 1 and `max-choices` to 5 — or to one fewer than the set when the set is
-smaller, so a default never lets a response name every idea there is. Choosing everything is not
-choosing. An authored `max-choices` may take the whole set; only a ceiling larger than the set is
-refused, and `min-choices` can never exceed `max-choices`.
-
-Because there is no player, these bounds are enforced only here: the compiler is what refuses a
-response that breaks them.
+`minChoices` and `maxChoices` are the survey's too. They default to 1 and 5 — or to one fewer
+than the set when the set is smaller, so a default never lets a response name every idea there
+is. Choosing everything is not choosing.
 
 ## The response
 
 ```
 survey [
-  name "you-can-choose"
-  ideas [
-    "protect voting rights"
-    "universal healthcare system"
-    "affordable housing"
-  ]
-  max-choices 2
+  id "team-retro"
+  session-id get-val-public "itemId"
   response [
-    selection ["affordable housing" "protect voting rights"]
-    idea "ranked-choice voting"
+    selection ["cut the build time in half" "write smaller pull requests"]
+    idea "give every service a named owner"
   ]
 ]..
 ```
 
-`selection` names the ideas chosen, and **the order is the ranking** — first is
-most important. No idea may appear twice.
+`selection` names the ideas chosen, and **the order is the ranking** — first is most important.
+No idea may appear twice.
 
 An idea may be named three ways: by **its exact text**, by **its id**, or by **its position,
 counting from 0**. All three resolve to ids in the compiled record, so they differ only in the
 source.
 
-Which to use is not a matter of taste. When the ideas were **fetched**, the set does not exist
-until the program compiles — so whoever writes the response has not seen the ids or the positions,
-and the text is the only thing they can know. Naming a position there is a guess, and a guess that
-lands in range compiles cleanly and records the wrong ideas. When the set is **written out**, or
-has been read back after compiling, the id is the better key: it survives the set being reordered.
+Which to use is not a matter of taste. The ideas live in the survey, so whoever writes a response
+has not seen the ids or the positions, and the text is the only thing they can know. Naming a
+position there is a guess, and a guess that lands in range compiles cleanly and records the wrong
+ideas. Once the compiled survey has been read back, the id is the better key: it survives the set
+being reordered.
 
 Text matching ignores case and surrounding whitespace. A number is always a position and a string
 never is, so those cannot collide even when a set's ids look like numbers — `selection [1]` is the
@@ -148,29 +129,36 @@ second idea, `selection ["1"]` is the idea whose id is `1`. Between the two stri
 wins.
 
 `idea` is one new idea, contributed by whoever answered. It must not repeat an idea already in
-the set; that is what makes it new. It may stand alone, with nothing selected.
+the set; that is what makes it new. It may stand alone, with nothing selected, where the survey's
+floor allows it.
 
 `response` is written inside the survey's brackets and lifted to the top level of the compiled
-record. A survey with no `response` is the state code generation leaves it in.
+record. A survey with no `response` is one awaiting an answer.
+
+Because there is no player, the survey's bounds are enforced only here: the compiler is what
+refuses a response that breaks them.
 
 ## Compiled output
 
 ```json
 {
   "survey": {
-    "name": "you-can-choose",
-    "title": "You Can Choose",
+    "id": "team-retro",
+    "sessionId": "7gMeEzUYkHqm3PDRrI8i",
+    "instance": "team-retro-1",
+    "title": "What Should We Fix First?",
+    "instructions": "These came out of last sprint's retro…",
     "ideas": [
-      { "id": "i0", "text": "protect voting rights" },
-      { "id": "i1", "text": "universal healthcare system" },
-      { "id": "i2", "text": "affordable housing" }
+      { "id": "t1", "text": "fix the flaky tests before adding features" },
+      { "id": "t2", "text": "cut the build time in half" },
+      { "id": "t3", "text": "write smaller pull requests" }
     ],
-    "minChoices": 0,
-    "maxChoices": 2
+    "minChoices": 1,
+    "maxChoices": 5
   },
-  "response": { "selection": ["i2", "i0"], "idea": "ranked-choice voting" }
+  "response": { "selection": ["t2", "t3"], "idea": "give every service a named owner" }
 }
 ```
 
-The renderer shows these side by side: the set as it was given on the left, and what came back
-— the selection in priority order, and the new idea — on the right.
+The renderer shows these side by side: the set as it was drawn on the left, and what came back —
+the selection in priority order, and the new idea — on the right.

@@ -12,8 +12,8 @@ import {
 } from "@graffiticode/l0000";
 
 import { attributeFields, checkValue, toPlainObject } from "./attributes.js";
-import { fetchDataset } from "./fetch.js";
-import { buildResponse, buildSurvey } from "./survey.js";
+import { loadSurvey } from "./source.js";
+import { buildResponse, buildSurvey, readSurveyAttributes } from "./survey.js";
 
 /* ------------------------------------------------------------------ Checker */
 
@@ -33,7 +33,6 @@ for (const name of Object.keys(attributeFields)) {
 }
 Checker.prototype.SURVEY = checkChild;
 Checker.prototype.RESPONSE = checkChild;
-Checker.prototype.FETCH = checkChild;
 
 /* -------------------------------------------------------------- Transformer */
 
@@ -58,33 +57,6 @@ for (const [name, meta] of Object.entries(attributeFields)) {
 }
 
 /**
- * `fetch "<url>"` — reads a dataset over HTTP and evaluates to it.
- *
- * Resuming from a promise is how the base language's own `use` fetches a schema at compile time,
- * so an async continuation is a supported shape here rather than a liberty being taken. The
- * value is whatever the dataset held; `ideas` is what decides whether it is a set of ideas, and
- * its message is the one an author needs.
- */
-Transformer.prototype.FETCH = function (this: any, node: any, options: any, resume: any) {
-  this.visit(node.elts[0], options, (e0: any, v0: any) => {
-    const err = ([] as any[]).concat(e0 || []);
-    if (typeof v0 !== "string" || !v0.trim()) {
-      resume(
-        err.concat(
-          'fetch: expected a URL in "quotes", e.g. fetch "https://raw.githubusercontent.com/graffiticode/l0182/main/packages/core/spec/ideas.json".',
-        ),
-        [],
-      );
-      return;
-    }
-    fetchDataset(v0.trim()).then(
-      (data) => resume(err, data),
-      (e) => resume(err.concat(String((e && e.message) || e)), []),
-    );
-  });
-};
-
-/**
  * `response [...]` — evaluates to a single-key record like an attribute, so `survey`'s
  * attribute list merges it in the ordinary way. `buildSurvey` then lifts it back out.
  */
@@ -99,15 +71,35 @@ Transformer.prototype.RESPONSE = function (this: any, node: any, options: any, r
   });
 };
 
-/** `survey [...]` — the program. */
+/**
+ * `survey [...]` — the program.
+ *
+ * The attribute list says which survey is being taken and by which session; everything the
+ * survey IS comes from `loadSurvey`, which reads it from the back end. That read is
+ * asynchronous, and resuming from a promise is how the base language's own `use` fetches a
+ * schema at compile time, so it is a supported shape here rather than a liberty being taken.
+ */
 Transformer.prototype.SURVEY = function (this: any, node: any, options: any, resume: any) {
   this.visit(node.elts[0], options, (e0: any, v0: any) => {
     const err = ([] as any[]).concat(e0 || []);
+    const raw = toPlainObject(v0);
+    let asked: { id: string; sessionId?: string };
     try {
-      resume(err, buildSurvey(toPlainObject(v0)));
+      asked = readSurveyAttributes(raw);
     } catch (e: any) {
       resume(err.concat(String((e && e.message) || e)), {});
+      return;
     }
+    loadSurvey(asked.id, { sessionId: asked.sessionId }).then(
+      (loaded) => {
+        try {
+          resume(err, buildSurvey(raw, loaded));
+        } catch (e: any) {
+          resume(err.concat(String((e && e.message) || e)), {});
+        }
+      },
+      (e) => resume(err.concat(String((e && e.message) || e)), {}),
+    );
   });
 };
 

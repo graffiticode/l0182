@@ -21,8 +21,8 @@ const outDir = join(pkgDir, "dist", "static");
 
 // Wipe and repopulate, exactly as `npm run assemble` does for packages/api/static: a stale file
 // cannot survive, which is the point. Without this, an asset that stops being emitted lingers in
-// dist/static and `assemble` faithfully copies it forward — which is how `ideas.json` kept being
-// served after it moved to raw.githubusercontent.com, and why the line below used to delete a
+// dist/static and `assemble` faithfully copies it forward — which is how a sample dataset kept
+// being served long after it stopped being emitted, and why the line below used to delete a
 // stale `lexicon.js` by name.
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
@@ -46,11 +46,10 @@ writeFileSync(join(outDir, "instructions.md"), `${parentInstructions}\n\n${ownIn
 
 // 4. Copy L0182's own verbatim spec assets.
 //
-// `spec/ideas.json` and `spec/ideas.csv` are deliberately NOT among them. They are the sample
-// dataset the documented examples fetch, and they are served from raw.githubusercontent.com
-// instead — a survey's ideas come from somewhere else by definition, and serving the sample
-// from the language server would have modelled the opposite. They stay in `spec/` because the
-// repo is where they are authored and docs.test.ts checks them.
+// The surveys in `data/` are deliberately NOT among them, which is why they live beside `spec/`
+// rather than inside it. They are what the compiler reads when a program names a survey, and
+// serving them would let whoever takes a survey read it — or a client render it — ahead of
+// taking it. `app.test.ts` asserts the 404.
 for (const f of ["usage-guide.md", "scope.json", "schema.json", "template.gc"]) {
   const src = join(specDir, f);
   if (existsSync(src)) copyFileSync(src, join(outDir, f));

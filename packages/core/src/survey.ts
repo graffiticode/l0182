@@ -17,7 +17,86 @@
  * All validation runs in the TRANSFORMER. `Checker.LIST` visits only `elts[0]`, so a rule
  * written as a Checker method would fire on the first attribute and nowhere else.
  */
-import { Idea, assertKnownAttributes, isIdeaEnvelope, mergeAttributes } from "./attributes.js";
+import { assertKnownAttributes, mergeAttributes } from "./attributes.js";
+import { LoadedSurvey } from "./source.js";
+
+/**
+ * An idea as the survey's data holds it: a bare line of text, or a record carrying the
+ * originating service's own id.
+ *
+ * Both forms exist for one reason. A survey's ideas come from wherever the survey came from,
+ * and when that carried ids they have to survive into `selection`, because a selection of
+ * positional ids means nothing back at the service they came from. A bare string is the
+ * shorthand for a set that had no ids of its own.
+ */
+export interface Idea {
+  id: string;
+  text: string;
+}
+
+/**
+ * A survey file that carries its own `title`/`instructions` alongside its ideas.
+ *
+ * Recognised by having an `ideas` array — a bare list has no keys at all — so a plain array of
+ * ideas and an envelope can never be confused, and a file that is an object without `ideas`
+ * still fails with the ordinary "expected a list of ideas" error.
+ */
+interface IdeaEnvelope {
+  title?: string;
+  instructions?: string;
+  minChoices?: number;
+  maxChoices?: number;
+  ideas: any[];
+}
+
+const isIdeaEnvelope = (raw: any): raw is IdeaEnvelope =>
+  !!raw && !Array.isArray(raw) && typeof raw === "object" && Array.isArray(raw.ideas);
+
+/** Name a bad value the way the file wrote it, so the message points at the mistake. */
+const showValue = (v: any): string => {
+  if (typeof v === "string") return JSON.stringify(v);
+  if (v === null) return "null";
+  if (Array.isArray(v)) return "a list";
+  if (typeof v === "object") return "a record";
+  return String(v);
+};
+
+/**
+ * Check what a survey file holds.
+ *
+ * These messages are for whoever maintains the survey data, not for the program: a program
+ * cannot cause or fix any of them. They still name the file, because that is the only thing
+ * that locates the fault.
+ */
+function assertLoaded(instance: string, raw: any): any[] {
+  const list = isIdeaEnvelope(raw) ? raw.ideas : raw;
+  if (!Array.isArray(list) || !list.length) {
+    throw new Error(
+      `survey: ${instance} holds no ideas. A survey's data is a list of ideas, or a record with ` +
+        "an `ideas` list alongside its title and instructions.",
+    );
+  }
+  list.forEach((entry, i) => {
+    const where = `survey: ${instance}, idea ${i + 1}`;
+    if (typeof entry === "string") {
+      if (!entry.trim()) throw new Error(`${where} is empty. Every idea is a line of text.`);
+      return;
+    }
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error(
+        `${where} is ${showValue(entry)}. Every idea is a line of text, or a record naming its ` +
+          'id — e.g. {"id": "a3", "text": "affordable housing"}.',
+      );
+    }
+    if (typeof entry.text !== "string" || !entry.text.trim()) {
+      throw new Error(`${where} has no \`text\`, the line to show.`);
+    }
+    if (entry.id !== undefined && (typeof entry.id !== "string" || !entry.id.trim())) {
+      throw new Error(`${where} has an \`id\` that is ${showValue(entry.id)}; ids are strings.`);
+    }
+  });
+  return list;
+}
 
 export interface SurveyResponse {
   /** Idea ids, in priority order. The order IS the ranking. */
@@ -49,7 +128,12 @@ export const DEFAULT_INSTRUCTIONS =
   "Below is a list of ideas. Please choose the ones that matter most to you.";
 
 export interface Survey {
-  name: string;
+  /** The survey taken. The id as written, so `you-can-choose-7` stays itself. */
+  id: string;
+  /** One taking of it, absent when the program did not say. */
+  sessionId?: string;
+  /** Which version of the survey was taken — the file the ideas came from. */
+  instance: string;
   title?: string;
   instructions: string;
   ideas: Idea[];
@@ -80,11 +164,11 @@ function normaliseIdeas(raw: any[]): Idea[] {
 }
 
 /** Reject a set that cannot support a meaningful choice, or that cannot be selected from unambiguously. */
-function assertIdeas(ideas: Idea[]): void {
+function assertIdeas(instance: string, ideas: Idea[]): void {
   if (ideas.length < 2) {
     throw new Error(
-      `survey: \`ideas\` has ${ideas.length === 1 ? "only one idea" : "no ideas"}, so there is nothing ` +
-        "to choose between. A survey needs at least two.",
+      `survey: ${instance} has ${ideas.length === 1 ? "only one idea" : "no ideas"}, so there is ` +
+        "nothing to choose between. A survey needs at least two.",
     );
   }
   const byText = new Map<string, number>();
@@ -93,7 +177,7 @@ function assertIdeas(ideas: Idea[]): void {
     const seenText = byText.get(idea.text);
     if (seenText !== undefined) {
       throw new Error(
-        `survey: ideas ${seenText + 1} and ${i + 1} are both ${JSON.stringify(idea.text)}. ` +
+        `survey: ${instance} has ideas ${seenText + 1} and ${i + 1} both ${JSON.stringify(idea.text)}. ` +
           "Each idea must be distinct — a duplicate splits the choice between two entries that mean the same thing.",
       );
     }
@@ -101,7 +185,7 @@ function assertIdeas(ideas: Idea[]): void {
     const seenId = byId.get(idea.id);
     if (seenId !== undefined) {
       throw new Error(
-        `survey: ideas ${seenId + 1} and ${i + 1} share the id ${JSON.stringify(idea.id)}, so a ` +
+        `survey: ${instance} has ideas ${seenId + 1} and ${i + 1} sharing the id ${JSON.stringify(idea.id)}, so a ` +
           "selection naming it is ambiguous. Give each idea its own id, or drop the ids and let them be numbered by position.",
       );
     }
@@ -127,35 +211,36 @@ const DEFAULT_MAX_CHOICES = 5;
  * and the author's to make; only a ceiling larger than the set is refused.
  */
 function resolveBounds(
-  attrs: Record<string, any>,
+  instance: string,
+  envelope: IdeaEnvelope | null,
   ideas: Idea[],
 ): { minChoices: number; maxChoices: number } {
-  const minChoices = attrs.minChoices !== undefined ? attrs.minChoices : DEFAULT_MIN_CHOICES;
+  const minChoices = envelope?.minChoices !== undefined ? envelope.minChoices : DEFAULT_MIN_CHOICES;
   const maxChoices =
-    attrs.maxChoices !== undefined
-      ? attrs.maxChoices
+    envelope?.maxChoices !== undefined
+      ? envelope.maxChoices
       : Math.min(DEFAULT_MAX_CHOICES, ideas.length - 1);
 
   if (!Number.isInteger(minChoices) || minChoices < 0) {
     throw new Error(
-      `survey: \`min-choices\` must be a whole number of 0 or more, got ${minChoices}.`,
+      `survey: ${instance} has a \`minChoices\` of ${minChoices}; it must be a whole number of 0 or more.`,
     );
   }
   if (!Number.isInteger(maxChoices) || maxChoices < 1) {
     throw new Error(
-      `survey: \`max-choices\` must be a whole number of at least 1, got ${maxChoices}.`,
+      `survey: ${instance} has a \`maxChoices\` of ${maxChoices}; it must be a whole number of at least 1.`,
     );
   }
   if (minChoices > maxChoices) {
     throw new Error(
-      `survey: \`min-choices\` (${minChoices}) is more than \`max-choices\` (${maxChoices}), so ` +
-        "no selection can satisfy both. Lower `min-choices` or raise `max-choices`.",
+      `survey: ${instance} asks for at least ${minChoices} and at most ${maxChoices}, so no ` +
+        "selection can satisfy both.",
     );
   }
   if (maxChoices > ideas.length) {
     throw new Error(
-      `survey: \`max-choices\` (${maxChoices}) is more than the ${ideas.length} ideas in the set, so ` +
-        "there are never enough ideas to pick that many. Add ideas or lower `max-choices`.",
+      `survey: ${instance} allows ${maxChoices} choices but holds ${ideas.length} ideas, so there ` +
+        "are never enough ideas to pick that many.",
     );
   }
   return { minChoices, maxChoices };
@@ -316,53 +401,72 @@ export function buildResponse(raw: any): AuthoredResponse {
 }
 
 /**
- * Assemble the compiled survey from its attribute list.
+ * The attribute list of a `survey`, read far enough to know what to load.
+ *
+ * Reading `id` and `session-id` has to happen BEFORE the survey's data can be asked for, and
+ * loading it is asynchronous, so the two halves are separate: this one, and `buildSurvey`.
+ */
+export function readSurveyAttributes(raw: any): {
+  id: string;
+  sessionId?: string;
+  attrs: Record<string, any>;
+} {
+  const attrs = mergeAttributes(raw, "survey");
+  assertKnownAttributes("survey", attrs);
+
+  if (attrs.id === undefined) {
+    throw new Error(
+      'survey: needs `id`, the survey being taken, e.g. survey [id "you-can-choose" session-id ' +
+        'get-val-public "itemId"]. The ideas come from the survey itself, so the id is what says ' +
+        "which ideas these are.",
+    );
+  }
+
+  // An empty session id is what an unresolved `get-val-public "itemId"` leaves behind, and it is
+  // no session at all: treating it as one would hand every such compile the same survey.
+  const sessionId =
+    typeof attrs.sessionId === "string" && attrs.sessionId.trim()
+      ? attrs.sessionId.trim()
+      : undefined;
+
+  return { id: attrs.id, sessionId, attrs };
+}
+
+/**
+ * Assemble the compiled survey from its attribute list and the survey data that was loaded for
+ * it.
+ *
+ * The ideas, the wording and the bounds are the SURVEY's — they come from the loaded file, not
+ * from the program, which says only which survey is being taken. What the program contributes
+ * is the response.
  *
  * `response` is lifted out of the survey's list to the top level of the emitted record. It is
  * written inside the brackets because `PROG` takes the program's LAST expression, so a second
  * top-level expression would silently discard the first — but it is not part of the survey, it
  * is an answer to one, and the two must be separable by anything reading the output.
  */
-export function buildSurvey(raw: any): Compiled {
-  const attrs = mergeAttributes(raw, "survey");
-  assertKnownAttributes("survey", attrs);
+export function buildSurvey(raw: any, loaded: LoadedSurvey): Compiled {
+  const { id, sessionId, attrs } = readSurveyAttributes(raw);
+  const { instance } = loaded;
 
-  if (attrs.name === undefined) {
-    throw new Error(
-      'survey: needs `name`, the survey these ideas were drawn from, e.g. survey [name "you-can-choose" ideas […]]. ' +
-        "It is what ties a response back to the survey it answers.",
-    );
-  }
-  if (attrs.ideas === undefined) {
-    throw new Error(
-      "survey: needs `ideas`, the set a response is chosen from, e.g. " +
-        'survey [name "…" ideas ["clean air and water" "affordable housing"]]. ' +
-        "The set is written at code generation, not authored by hand.",
-    );
-  }
-
-  // A fetched dataset may bring its own `title` and `instructions` (see `isIdeaEnvelope`). They
-  // are DEFAULTS: whoever wrote the program is closer to the audience than whoever published the
-  // dataset, so an authored value always wins. Writing neither is what lets a one-line program
-  // still render a page a person can read.
-  const envelope = isIdeaEnvelope(attrs.ideas) ? attrs.ideas : null;
-  const ideas = normaliseIdeas((envelope ? envelope.ideas : attrs.ideas) as any[]);
-  assertIdeas(ideas);
-  const { minChoices, maxChoices } = resolveBounds(attrs, ideas);
-
-  const title = attrs.title !== undefined ? attrs.title : envelope?.title;
-  const authored = attrs.instructions !== undefined ? attrs.instructions : envelope?.instructions;
+  const envelope = isIdeaEnvelope(loaded.data) ? loaded.data : null;
+  const ideas = normaliseIdeas(assertLoaded(instance, loaded.data));
+  assertIdeas(instance, ideas);
+  const { minChoices, maxChoices } = resolveBounds(instance, envelope, ideas);
 
   // Every compiled survey carries instructions, because a participant arrives cold and a bare
   // list of ideas does not tell them what they are looking at. Falling back rather than refusing
   // is deliberate: a survey that compiles with generic wording is still usable, whereas a hard
   // error would fail a program over prose — and the generic line is visibly generic, which is
-  // what prompts someone to replace it. Write real instructions; this is the floor, not the goal.
-  const instructions = authored !== undefined ? authored : DEFAULT_INSTRUCTIONS;
+  // what prompts someone to fix the survey's data. This is the floor, not the goal.
+  const instructions =
+    envelope?.instructions !== undefined ? envelope.instructions : DEFAULT_INSTRUCTIONS;
 
   const survey: Survey = {
-    name: attrs.name,
-    ...(title !== undefined ? { title } : {}),
+    id,
+    ...(sessionId !== undefined ? { sessionId } : {}),
+    instance,
+    ...(envelope?.title !== undefined ? { title: envelope.title } : {}),
     instructions,
     ideas,
     minChoices,

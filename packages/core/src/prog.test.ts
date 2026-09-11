@@ -11,9 +11,14 @@
  */
 import { describe, expect, it } from "vitest";
 import { parser } from "@graffiticode/parser";
-import { compiler, lexicon } from "./index.js";
+import { compiler, lexicon, setSource } from "./index.js";
 
-const SRC = `survey [ name "n" title "T" ideas ["one" "two"] ]..`;
+const SRC = `survey [ id "fixture" ]..`;
+
+setSource(async (id) => ({
+  instance: `${id}-1`,
+  data: { title: "T", ideas: ["one", "two"] },
+}));
 
 /** Compile with an explicit `data`, the way a round trip does. */
 async function compileWith(data: any): Promise<any> {

@@ -2,17 +2,25 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "L0182",
   "title": "L0182",
-  "description": "A compiled L0182 survey: a named set of ideas someone is asked to choose between, and — once something has answered — the response to it, being the ideas chosen in priority order plus one new idea that was not in the set.",
+  "description": "A compiled L0182 survey: the set of ideas someone was asked to choose between, drawn from the survey's own data by the compiler, and — once something has answered — the response to it, being the ideas chosen in priority order plus one new idea that was not in the set.",
   "type": "object",
   "required": ["survey"],
   "properties": {
     "survey": {
-      "description": "The set of ideas and the bounds a response must satisfy. Written at code generation, resolved from the survey's name against the service that holds the pool.",
+      "description": "The set of ideas and the bounds a response must satisfy. None of it is written in the program: the compiler reads it from the survey the program names.",
       "type": "object",
-      "required": ["name", "instructions", "ideas", "minChoices", "maxChoices"],
+      "required": ["id", "instance", "instructions", "ideas", "minChoices", "maxChoices"],
       "properties": {
-        "name": {
-          "description": "The survey these ideas were drawn from. Ties a response back to the survey it answers, and is the argument code generation resolves the set from.",
+        "id": {
+          "description": "The survey being taken, as the program named it. Ties a response back to the survey it answers.",
+          "type": "string"
+        },
+        "sessionId": {
+          "description": "One taking of the survey. Seeded from the item id, and what keeps a response with the version of the survey it answers. Absent when the program named no session.",
+          "type": "string"
+        },
+        "instance": {
+          "description": "Which version of the survey was taken — the file its ideas came from, e.g. you-can-choose-7. A survey with several versions draws one of them per session; writing this as the id takes that version outright.",
           "type": "string"
         },
         "title": {
@@ -20,22 +28,22 @@
           "type": "string"
         },
         "instructions": {
-          "description": "What the participant is asked to do, shown under the title and above the ideas. Always present: the compiler substitutes a generic line when neither the program nor its dataset supplies one. The bounds line beneath it is derived from minChoices and maxChoices.",
+          "description": "What the participant is asked to do, shown under the title and above the ideas. Always present: the compiler substitutes a generic line when the survey's data supplies none. The bounds line beneath it is derived from minChoices and maxChoices.",
           "type": "string"
         },
         "ideas": {
-          "description": "The set a response is chosen from. Not authored by hand: inlined at code generation from what the service returned.",
+          "description": "The set a response is chosen from, compiled in from the survey's own data. A program cannot write it.",
           "type": "array",
           "minItems": 2,
           "items": { "$ref": "#/$defs/idea" }
         },
         "minChoices": {
-          "description": "Fewest ideas a response may select. Defaults to 1. Enforced by the compiler, which is the only enforcement there is — nothing renders a survey interactively.",
+          "description": "Fewest ideas a response may select. The survey's own, defaulting to 1. Enforced by the compiler, which is the only enforcement there is — nothing renders a survey interactively.",
           "type": "integer",
           "minimum": 0
         },
         "maxChoices": {
-          "description": "Most ideas a response may select. Never more than the number of ideas; defaults to 5, or one fewer than the set when the set is smaller, so a default never permits choosing every idea.",
+          "description": "Most ideas a response may select. The survey's own; never more than the number of ideas, defaulting to 5, or one fewer than the set when the set is smaller, so a default never permits choosing every idea.",
           "type": "integer",
           "minimum": 1
         }
@@ -66,7 +74,7 @@
   "$defs": {
     "idea": {
       "title": "Idea",
-      "description": "One idea in the set. The id is the service's own where the fetch returned one, and positional (i0 upward) where it did not — a selection names ids, never text.",
+      "description": "One idea in the set. The id is the originating service's own where the survey's data carried one, and positional (i0 upward) where it did not — a selection names ids, never text.",
       "type": "object",
       "required": ["id", "text"],
       "properties": {

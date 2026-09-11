@@ -28,26 +28,19 @@ const attributeWords = Object.fromEntries(
 
 /**
  * The two containers, hand-written because each assembles a record rather than emitting one
- * key. Both are arity 1: an attribute list in, one record out.
+ * key. Both are arity 1: an attribute list in, one record out. They are the ONLY hand-written
+ * words: everything else is a row in `attributeFields`.
  *
  * `response` is written inside `survey`'s list and lifted to the top level of the output. It
  * nests because `PROG` takes the program's last expression, so a second top-level expression
  * would silently discard the first.
  */
 const containers = {
-  // Not a container, but hand-written for the same reason they are: it evaluates to a value the
-  // attribute table cannot describe — whatever the dataset holds — rather than to a keyed record.
-  fetch: fn(
-    "FETCH",
-    1,
-    "<string: any>",
-    "Reads a dataset over HTTP at compile time and evaluates to it: JSON, or CSV as a list of records keyed by its header row. This is how `ideas` gets its set.",
-  ),
   survey: fn(
     "SURVEY",
     1,
     "<list: record>",
-    "A named set of ideas to choose from, and optionally the response to it.",
+    "The survey being taken, and optionally the response to it. The ideas themselves come from the survey, not from the program.",
   ),
   response: fn(
     "RESPONSE",

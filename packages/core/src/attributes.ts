@@ -24,7 +24,7 @@ export interface AttributeMeta {
   /** The key this word emits. Kebab-case word -> camelCase field where they differ. */
   field: string;
   /** Type asserted before the value is used. Checked in the Transformer, never the Checker — see below. */
-  expects?: "string" | "number" | "refs" | "ideas";
+  expects?: "string" | "number" | "refs";
   /** One line, shown in the generated spec. */
   description: string;
 }
@@ -34,39 +34,17 @@ export interface AttributeMeta {
  * is the key lowercased with underscores as dashes, so MIN_CHOICES is `min-choices`.
  */
 export const attributeFields: Record<string, AttributeMeta> = {
-  NAME: {
-    field: "name",
+  ID: {
+    field: "id",
     expects: "string",
     description:
-      "The survey this set of ideas was drawn from. It is what ties a response back to the survey it answers, and it is the argument code generation resolves the idea set from.",
+      'The survey being taken, e.g. id "you-can-choose". The ideas, the wording and the bounds all come from the survey itself — the program names it and nothing more. An id naming one version outright (id "you-can-choose-7") takes that version rather than drawing one.',
   },
-  TITLE: {
-    field: "title",
-    expects: "string",
-    description: "The survey's title, shown above the ideas.",
-  },
-  INSTRUCTIONS: {
-    field: "instructions",
+  SESSION_ID: {
+    field: "sessionId",
     expects: "string",
     description:
-      "What the participant is asked to do, in your own words, shown under the title and above the ideas. The bounds line beneath it is derived from min-choices and max-choices, so instructions should say what the survey is FOR rather than restate the count.",
-  },
-  IDEAS: {
-    field: "ideas",
-    expects: "ideas",
-    description:
-      'The set of ideas this response is chosen from, written at code generation. Each entry is a line of text, or a record naming the service\'s own id: ideas ["…" {id: "a3" text: "…"}].',
-  },
-  MIN_CHOICES: {
-    field: "minChoices",
-    expects: "number",
-    description: "Fewest ideas a response may select. Defaults to 1.",
-  },
-  MAX_CHOICES: {
-    field: "maxChoices",
-    expects: "number",
-    description:
-      "Most ideas a response may select. Defaults to 5, or to one fewer than the number of ideas when the set is smaller — a default never permits choosing every idea.",
+      'One taking of a survey. Write it exactly as `session-id get-val-public "itemId"` — it is what keeps a response with the version of the survey it answers.',
   },
   SELECTION: {
     field: "selection",
@@ -84,9 +62,7 @@ export const attributeFields: Record<string, AttributeMeta> = {
 
 /** The signature string the generated spec renders, derived so it cannot drift from the row. */
 export const typeOf = (meta: AttributeMeta): string =>
-  meta.expects === "refs" || meta.expects === "ideas"
-    ? "<list: record>"
-    : `<${meta.expects || "any"}: record>`;
+  meta.expects === "refs" ? "<list: record>" : `<${meta.expects || "any"}: record>`;
 
 /**
  * Which words each container accepts, in source spelling.
@@ -96,7 +72,7 @@ export const typeOf = (meta: AttributeMeta): string =>
  * a record nothing reads, compiles clean, and silently does not do what it says.
  */
 export const validAttributes: Record<string, string[]> = {
-  survey: ["name", "title", "instructions", "ideas", "min-choices", "max-choices", "response"],
+  survey: ["id", "session-id", "response"],
   response: ["selection", "idea"],
 };
 
@@ -145,40 +121,6 @@ const showValue = (v: any): string => {
 };
 
 /**
- * An idea as written: a bare line of text, or a record carrying the service's own id.
- *
- * Both forms exist for one reason. Code generation inlines whatever the upstream L0170 fetch
- * returned; when that carried ids they must survive into `selection`, because a selection of
- * positional ids means nothing to the service the ideas came from. A bare string is the
- * shorthand for a set that had no ids of its own.
- */
-export interface Idea {
-  id: string;
-  text: string;
-}
-
-/** Validate one `ideas` entry. Returns an error string, or null. */
-const checkIdea = (raw: any, at: number): string | null => {
-  const where = `ideas: entry ${at + 1}`;
-  if (typeof raw === "string") {
-    return raw.trim() ? null : `${where} is empty. Every idea must be a line of text.`;
-  }
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    return (
-      `${where} is ${showValue(raw)}. Every idea is a line of text, or a record naming its id — ` +
-      'e.g. ideas ["clean air and water" {id: "a3" text: "affordable housing"}].'
-    );
-  }
-  if (typeof raw.text !== "string" || !raw.text.trim()) {
-    return `${where} has no \`text\`. A record idea needs the line to show, e.g. {id: "a3" text: "affordable housing"}.`;
-  }
-  if (raw.id !== undefined && (typeof raw.id !== "string" || !raw.id.trim())) {
-    return `${where} has an \`id\` that is ${showValue(raw.id)}; an id must be a non-empty string.`;
-  }
-  return null;
-};
-
-/**
  * Assert a value's type. Returns an error string, or null.
  *
  * This runs in the TRANSFORMER, not the Checker, and that is not a style preference:
@@ -187,34 +129,8 @@ const checkIdea = (raw: any, at: number): string | null => {
  * never. L0166 shipped a Checker rule rejecting negative points that did nothing for exactly
  * this reason.
  */
-/**
- * A fetched dataset that carries its own `title`/`instructions` alongside its ideas.
- *
- * Recognised by having an `ideas` array — a bare list has no keys at all — so a plain array
- * dataset and an envelope can never be confused, and a JSON file that happens to be an object
- * without `ideas` still fails with the ordinary "expected a list of ideas" error.
- */
-export function isIdeaEnvelope(raw: any): raw is { title?: string; instructions?: string; ideas: any[] } {
-  return !!raw && !Array.isArray(raw) && typeof raw === "object" && Array.isArray((raw as any).ideas);
-}
-
 export function checkValue(name: string, meta: AttributeMeta, raw: any): string | null {
   const word = wordOf(name);
-  if (meta.expects === "ideas") {
-    // A fetched dataset may arrive as an envelope — `{title, instructions, ideas: [...]}` — so
-    // that the set carries the words a participant reads along with the ideas themselves. Only
-    // `fetch` produces one; an authored `ideas [...]` is always the bare list. Unwrap before
-    // checking so both forms hit the identical per-idea validation below.
-    const list = isIdeaEnvelope(raw) ? raw.ideas : raw;
-    if (!Array.isArray(list) || !list.length) {
-      return `${word}: expected a list of ideas, e.g. ideas ["clean air and water" "affordable housing"].`;
-    }
-    for (let i = 0; i < list.length; i++) {
-      const bad = checkIdea(list[i], i);
-      if (bad) return bad;
-    }
-    return null;
-  }
   if (meta.expects === "refs") {
     // A reference to an idea: its id as a string, or its position as a number. The two can never
     // collide — even for a set whose ids look like numbers — because the notation says which is

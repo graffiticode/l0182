@@ -48,10 +48,11 @@ export const Survey = ({ state }: FormProps) => {
 
   return (
     <div className="l0182-survey mx-auto flex max-w-4xl flex-col gap-6 p-6">
-      {/* Title, then the author's own words, then — as the caption on the ideas panel — the
-          bounds line derived from min-choices/max-choices. `name` is deliberately absent: it is
-          the internal handle a response is keyed by, not something a participant should read,
-          and while it sat here it occupied the line the instructions belong on. */}
+      {/* Title, then the survey's own words, then — as the caption on the ideas panel — the
+          bounds line derived from minChoices/maxChoices. `id`, `sessionId` and `instance` are
+          deliberately absent: they are the handles a response is keyed by, not something a
+          participant should read, and while the id sat here it occupied the line the
+          instructions belong on. */}
       <header className="flex flex-col gap-2">
         {survey.title && <h1 className="text-lg font-semibold text-zinc-900">{survey.title}</h1>}
         <p className="whitespace-pre-line text-sm text-zinc-600">{survey.instructions}</p>
