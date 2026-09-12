@@ -1,6 +1,6 @@
 {
   "title": "What Should We Build Next?",
-  "instructions": "These are the features our customers have asked for most often. Choose the ones that would make the biggest difference to your work, most important first.",
+  "instructions": "These are the features our customers have asked for most often. Choose the ones that would make the biggest difference to your work and put them in priority order, most important first. Then add one feature of your own that is not offered.",
   "minChoices": 2,
   "maxChoices": 4,
   "ideas": [

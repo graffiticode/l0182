@@ -1,6 +1,6 @@
 {
   "title": "This Year's City Budget",
-  "instructions": "The council has money set aside for neighbourhood projects this year. These are the ideas residents put forward. Pick the ones you would most like to see funded.",
+  "instructions": "The council has money set aside for neighbourhood projects this year. These are the ideas residents put forward. Pick the ones you would most like to see funded and put them in priority order, most important first. Then add one idea of your own the list is missing.",
   "minChoices": 0,
   "maxChoices": 2,
   "ideas": [
