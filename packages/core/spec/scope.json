@@ -6,6 +6,7 @@
     "Recording which ideas someone chose from a survey, and the priority order they put them in",
     "Contributing one new idea that was not already in the set, alongside a selection or on its own",
     "Taking a survey by its id, with the compiler reading its ideas, title, instructions and bounds from the back end when the program compiles",
+    "Opening a survey to see what it holds before deciding — \"open the school survey so I can see the list\" is an ordinary taking, because a program with no response compiles to the survey awaiting one",
     "Drawing one version of a survey that has several, and keeping a session on the version it was shown",
     "Refusing at compile time any response that breaks the bounds the survey sets, which is the only enforcement there is",
     "Keeping the originating service's own ids on the ideas, so a selection means something back where the set came from",
