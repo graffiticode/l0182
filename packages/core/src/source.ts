@@ -100,6 +100,7 @@ function readInstance(instance: string): any {
     throw new Error(
       `survey: ${instance}.json is not readable JSON — ${e?.message}. The survey's data is ` +
         "broken; this is not something the program can fix.",
+      { cause: e },
     );
   }
 }
