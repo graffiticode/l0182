@@ -76,7 +76,8 @@ if [ "$DEPLOY_NOW" = "y" ]; then
             --region us-central1 \
             --port 50182 \
             --allow-unauthenticated \
-            --set-env-vars AUTH_URL=https://auth.graffiticode.org
+            --max-instances=20 \
+            --update-env-vars AUTH_URL=https://auth.graffiticode.org
     else
         echo "🚀 Deploying from source (Cloud Build will build the container)..."
         gcloud run deploy l0182 \
@@ -85,7 +86,8 @@ if [ "$DEPLOY_NOW" = "y" ]; then
             --region us-central1 \
             --port 50182 \
             --allow-unauthenticated \
-            --set-env-vars AUTH_URL=https://auth.graffiticode.org
+            --max-instances=20 \
+            --update-env-vars AUTH_URL=https://auth.graffiticode.org
     fi
 
     echo "✅ Initial deployment complete!"

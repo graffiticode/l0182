@@ -67,7 +67,8 @@ gcloud run deploy l0182 \
   --region us-central1 \
   --port 50182 \
   --allow-unauthenticated \
-  --set-env-vars AUTH_URL=https://auth.graffiticode.org
+  --max-instances=20 \
+  --update-env-vars AUTH_URL=https://auth.graffiticode.org
 ```
 
 ### Environment Variables
@@ -83,7 +84,7 @@ To update environment variables:
 ```bash
 gcloud run services update l0182 \
   --region us-central1 \
-  --set-env-vars AUTH_URL=https://your-auth-url.com
+  --update-env-vars AUTH_URL=https://your-auth-url.com
 ```
 
 ### Monitoring and Logs

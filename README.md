@@ -7,33 +7,35 @@ L0182 is a Graffiticode dialect for **collective-intelligence surveys** — grou
 people both contribute ideas and choose between them. It inherits the base vocabulary of
 [@graffiticode/l0000](https://www.npmjs.com/package/@graffiticode/l0000).
 
-A program is a named set of ideas and, once something has answered, the response to it: the
-ideas chosen in priority order, plus one new idea that was not in the set.
+A program names the survey being taken and, once something has answered, carries the response
+to it: the ideas chosen in priority order, plus one new idea that was not in the set.
 
 ```
 survey [
-  name "you-can-choose"
-  title "You Can Choose"
-  ideas fetch "https://example.org/surveys/you-can-choose/ideas.json"
-  max-choices 2
+  id "team-retro"
+  session-id get-val-public "itemId"
   response [
-    selection [2 0]
-    idea "ranked-choice voting"
+    selection ["cut the build time in half" "write smaller pull requests"]
+    idea "give every service a named owner"
   ]
 ]..
 ```
 
-## The ideas are not authored
+## The survey is not authored
 
-`fetch` reads them from the dataset that holds them — JSON, or CSV keyed by its header row — when
-the program compiles. Compiled results are stored against a content-addressed task id, so a
-program reads its dataset **once** and the set is fixed from then on: a response only means
-anything against the ideas it was shown.
+A program says `id "team-retro"` and nothing else about the survey. Its ideas, title,
+instructions and bounds (`minChoices`/`maxChoices`) live in one JSON file per version in
+`packages/core/data/`, which the compiler reads when the program compiles; no word in the
+language writes any of them, so whoever takes a survey cannot edit it.
 
-The address must be public; no credentials are sent, and one written into a URL would be stored
-in the program. L0182 holds no pool, samples nothing, and never re-reads a set it has compiled.
+An id that names several versions (`you-can-choose-1` … `you-can-choose-12`) draws one without
+replacement; naming a version outright (`id "you-can-choose-7"`) takes exactly that one.
+`session-id get-val-public "itemId"` keeps the draw stable across the turn that adds the response,
+so the answer is checked against the ideas its taker actually saw.
 
-An idea is named in a `selection` by its id, or by its position counting from 0.
+An idea is named in a `selection` by its exact text, by its id, or by its position counting from 0.
+Text is the one to use when writing a response, because whoever writes it has not seen the ids or
+positions; all three resolve to ids in the compiled record.
 
 ## The code is the interface
 

@@ -107,6 +107,9 @@ deploy path has to carry them too:**
 Run carries the current scaling and environment forward, so it is safe for a code-only push and
 cannot be used to change either.
 
+The hand-written `gcloud run deploy` commands in `DEPLOYMENT.md` and
+`scripts/setup-gcp-deployment.sh` are deploy paths too, and carry both rules with a literal 20.
+
 ## Architecture
 
 Three workspaces on the published `@graffiticode/l0000` and `@graffiticode/l0000-view`.
@@ -118,7 +121,10 @@ Three workspaces on the published `@graffiticode/l0000` and `@graffiticode/l0000
 - **`packages/api`** (`@graffiticode/api-l0182`, private) — Express: `POST /compile`, `GET /form`,
   a health check at `/`, and the assembled static assets. Its middleware order and cache headers
   are load-bearing — see "What `app.ts` serves".
-- **`packages/view`** (`@graffiticode/l0182-view`) — the renderer.
+- **`packages/view`** (`@graffiticode/l0182-view`) — the renderer. It does **not** depend on
+  `@graffiticode/l0182`: that dependency was dropped so the published view installs from npm on
+  its own, which is why the view keeps its own model types in `lib/survey.ts` rather than
+  importing them from core.
 
 ### One attribute table, and no arity-2 words at all
 
