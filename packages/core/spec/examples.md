@@ -2,10 +2,11 @@
 
 # L0182 RAG Training Examples
 
-70 example prompts for training a RAG model on L0182, the survey record — covering taking a
+82 example prompts for training a RAG model on L0182, the survey record — covering taking a
 survey of either style, putting the chosen options of a ranked-choice survey in priority order,
 contributing a write-in, answering within the bounds a survey sets, and rating the items of a
-rating survey on their scales, with opt-outs and comments.
+rating survey on their scales — Likert agreement, satisfaction, frequency and importance grids,
+NPS, stars and semantic differentials — with opt-outs and comments.
 
 **Every example starts by OPENING a survey, and most then take it in a second turn.** Those are
 two distinct requests against the same item, and they are written here as `Turn 1` and `Turn 2`:
@@ -223,3 +224,38 @@ see which.
     **Turn 2** — Take it as a student who missed half the lectures, and say so in the comment.
 70. **Turn 1** — Take `customer-satisfaction`.
     **Turn 2** — Take it as a first-time visitor who could not find anything they came for.
+
+## Category 12: Likert Scales (71–82)
+
+A Likert grid is a run of statements sharing one labelled scale. People answer it in the scale's
+own words ("agree"), in looser words ("somewhere in the middle", "the strongest yes there is"),
+or as a number ("a 4 out of 5") — and a number on a Likert scale is its value, so a 4 on a
+five-point agreement scale is "Agree", not the fifth label. Prompts that dictate answers use
+`course-feedback` and `customer-satisfaction`, which have one version each; `workplace-pulse`
+draws its scale — frequency, importance or effect — so prompts for it leave the answers to the
+responder.
+
+71. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Strongly agree with every statement, and the portal was very easy — it was the best course I have taken.
+72. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it for me: the goals and the materials get a 4 out of 5, the pace a 2, feedback a 3, the labs a 5, and the portal a 6.
+73. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Answer it right down the middle — neither agree nor disagree on every statement, and halfway on the portal.
+74. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it as a student who disagreed with most of it but thought the materials were clear.
+75. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it for me: I strongly disagree that the pace was right, I agree about everything else, and the portal was very easy.
+76. **Turn 1** — Take `customer-satisfaction`.
+    **Turn 2** — Take it for me: very satisfied with the staff, dissatisfied with the wait, neutral about the rest, three stars overall, and a 6 for recommending you.
+77. **Turn 1** — Take `customer-satisfaction`.
+    **Turn 2** — Take it as someone who thought the prices were far too high but liked everything else.
+78. **Turn 1** — Take `customer-satisfaction`.
+    **Turn 2** — Rate every question a 2 out of 5 — it was a disappointing visit — give it two stars, and a 3 for recommending you.
+79. **Turn 1** — Take `workplace-pulse`.
+    **Turn 2** — Answer it as someone who has had a hard month: lean towards the negative end wherever the scale has one.
+80. **Turn 1** — Take `workplace-pulse`.
+    **Turn 2** — Answer it as a new starter in their first month, using whatever scale it gives you.
+81. **Turn 1** — Take `workplace-pulse`.
+    **Turn 2** — Take it, and use the top of the scale for anything about my manager and the middle for everything else.
+82. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it as a part-time student who never saw the feedback or the labs: not applicable for those two, agree with the rest, and a 5 for the portal.
