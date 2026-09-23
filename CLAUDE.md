@@ -561,8 +561,8 @@ items or any scoring of a scale. Ranking or rating objects other than a line of 
   hard a generator has to be told to copy such a line verbatim.
 - `console/docs/language-authoring-style.md` — the style spec this dialect follows.
 - `console/src/lib/languages.ts` — the catalog. **L0182 must be registered here to reach any
-  user.** Its `routingHint` was last rewritten on branch `l0182-generic-surveys`, which also
-  dropped L0182's `brands` entry; keep its `do NOT` and `never` clauses when editing, or L0180
+  user.** Its `routingHint` covers both survey styles, and L0182 carries no `brands`
+  entry (console `87cfc14` on `main`); keep its `do NOT` and `never` clauses when editing, or L0180
   starts absorbing survey requests. `scripts/eval-scope-gate.ts --only survey` there is the
   routing check for rating requests, and it reads the DEPLOYED `scope.json`. L0182 declares no
   `composesWith` and should not: the compiler reads the survey itself rather than binding an
