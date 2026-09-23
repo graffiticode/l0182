@@ -8,74 +8,74 @@
  * component stays a projection of it.
  */
 import { describe, expect, it } from "vitest";
-import { boundsLabel, resolveSelection } from "./survey";
+import { boundsLabel, resolveChoices } from "./survey";
 import type { Survey } from "./survey";
 
 const survey = (over: Partial<Survey> = {}): Survey => ({
-  id: "you-can-choose",
-  instance: "you-can-choose-7",
+  id: "civic-priorities",
+  instance: "civic-priorities-7",
   // The compiler guarantees this field, so the fixture carries it too — the view is a
   // projection of the compiled record and must not be typed more loosely than one.
-  instructions: "Below is a list of ideas. Please choose the ones that matter most to you.",
-  ideas: [
-    { id: "i0", text: "clean air and water" },
-    { id: "i1", text: "affordable housing" },
-    { id: "i2", text: "invest in public transit" },
+  instructions: "Below is a list of options. Please choose the ones that matter most to you.",
+  options: [
+    { id: "o0", text: "clean air and water" },
+    { id: "o1", text: "affordable housing" },
+    { id: "o2", text: "invest in public transit" },
   ],
   minChoices: 0,
   maxChoices: 3,
   ...over,
 });
 
-describe("resolveSelection", () => {
-  it("returns the chosen ideas in the order the response put them, not the set's order", () => {
-    const { chosen } = resolveSelection(survey(), { selection: ["i2", "i0"] });
-    expect(chosen.map((i) => i.id)).toEqual(["i2", "i0"]);
+describe("resolveChoices", () => {
+  it("returns the chosen options in the order the response put them, not the set's order", () => {
+    const { chosen } = resolveChoices(survey(), { choices: ["o2", "o0"] });
+    expect(chosen.map((i) => i.id)).toEqual(["o2", "o0"]);
     expect(chosen.map((i) => i.text)).toEqual(["invest in public transit", "clean air and water"]);
   });
 
   it("reports which ids the selection was chosen from, for dimming them in the set", () => {
-    const { chosenIds } = resolveSelection(survey(), { selection: ["i2", "i0"] });
-    expect([...chosenIds].sort()).toEqual(["i0", "i2"]);
+    const { chosenIds } = resolveChoices(survey(), { choices: ["o2", "o0"] });
+    expect([...chosenIds].sort()).toEqual(["o0", "o2"]);
   });
 
   it("names an id that matches nothing rather than dropping it", () => {
     // Dropping it would render a shorter ranking than the one actually recorded — wrong in the
     // way that looks right. The compiler refuses these, so they only arrive on a record built
     // outside it.
-    const { chosen, unknown } = resolveSelection(survey(), { selection: ["i0", "gone", "i1"] });
-    expect(chosen.map((i) => i.id)).toEqual(["i0", "i1"]);
+    const { chosen, unknown } = resolveChoices(survey(), { choices: ["o0", "gone", "o1"] });
+    expect(chosen.map((i) => i.id)).toEqual(["o0", "o1"]);
     expect(unknown).toEqual(["gone"]);
   });
 
   it("resolves against the service's own ids when the set carried them", () => {
     const s = survey({
-      ideas: [
+      options: [
         { id: "a3", text: "one" },
         { id: "b7", text: "two" },
       ],
     });
-    const { chosen, unknown } = resolveSelection(s, { selection: ["b7"] });
+    const { chosen, unknown } = resolveChoices(s, { choices: ["b7"] });
     expect(chosen).toEqual([{ id: "b7", text: "two" }]);
     expect(unknown).toEqual([]);
   });
 
   it("is empty for a survey nothing has answered", () => {
-    const { chosen, unknown, chosenIds } = resolveSelection(survey(), undefined);
+    const { chosen, unknown, chosenIds } = resolveChoices(survey(), undefined);
     expect(chosen).toEqual([]);
     expect(unknown).toEqual([]);
     expect(chosenIds.size).toBe(0);
   });
 
-  it("is empty for a response that contributed an idea and chose nothing", () => {
-    const { chosen } = resolveSelection(survey(), { selection: [], idea: "ranked-choice voting" });
+  it("is empty for a response that contributed an option and chose nothing", () => {
+    const { chosen } = resolveChoices(survey(), { choices: [], writeIn: "ranked-choice voting" });
     expect(chosen).toEqual([]);
   });
 
   it("survives a survey that has not compiled", () => {
-    expect(resolveSelection(undefined, { selection: ["i0"] })).toEqual({
+    expect(resolveChoices(undefined, { choices: ["o0"] })).toEqual({
       chosen: [],
-      unknown: ["i0"],
+      unknown: ["o0"],
       chosenIds: new Set(),
     });
   });

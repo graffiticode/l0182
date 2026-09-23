@@ -2,7 +2,7 @@ survey [
   id "team-retro"
   session-id get-val-public "itemId"
   response [
-    selection ["fix the flaky tests before adding features" "cut the build time in half"]
-    idea "give every service a named owner"
+    choices ["fix the flaky tests before adding features" "cut the build time in half"]
+    write-in "give every service a named owner"
   ]
 ]..

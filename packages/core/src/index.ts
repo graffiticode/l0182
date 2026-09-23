@@ -6,7 +6,7 @@ export type { AttributeMeta } from "./attributes.js";
 export { loadSurvey, resetDraws, setSource } from "./source.js";
 export type { LoadedSurvey, LoadOptions, SurveySource } from "./source.js";
 export { buildResponse, buildSurvey, readSurveyAttributes } from "./survey.js";
-export type { AuthoredResponse, Compiled, Idea, Survey, SurveyResponse } from "./survey.js";
+export type { AuthoredResponse, Compiled, Option, Survey, SurveyResponse } from "./survey.js";
 export { Compiler, Renderer, Visitor } from "@graffiticode/l0000";
 export type {
   ASTNode,

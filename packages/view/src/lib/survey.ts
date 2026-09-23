@@ -7,8 +7,8 @@
  * looking wrong belongs in a pure function here, and the component stays a projection of it.
  */
 
-/** One idea in the set. The id is the service's own, or positional (`i0` upward). */
-export interface Idea {
+/** One option in the set. The id is the service's own, or positional (`o0` upward). */
+export interface Option {
   id: string;
   text: string;
 }
@@ -18,20 +18,22 @@ export interface Survey {
   id: string;
   /** One taking of it. */
   sessionId?: string;
-  /** Which version of the survey this is — the file its ideas came from. */
+  /** Which version of the survey this is — the file its options came from. */
   instance?: string;
+  /** How a response answers it. */
+  style?: "ranked-choice";
   title?: string;
   instructions: string;
-  ideas: Idea[];
+  options: Option[];
   minChoices: number;
   maxChoices: number;
 }
 
 export interface SurveyResponse {
-  /** Idea ids, in priority order. The order IS the ranking. */
-  selection: string[];
-  /** One idea that was not in the set. */
-  idea?: string;
+  /** Option ids, in priority order. The order IS the ranking. */
+  choices: string[];
+  /** One option that was not in the set. */
+  writeIn?: string;
 }
 
 export interface Compiled {
@@ -40,8 +42,8 @@ export interface Compiled {
 }
 
 export interface Resolved {
-  /** The chosen ideas, in the order the response put them. */
-  chosen: Idea[];
+  /** The chosen options, in the order the response put them. */
+  chosen: Option[];
   /**
    * Selected ids naming nothing in the set.
    *
@@ -56,17 +58,17 @@ export interface Resolved {
 }
 
 /** Resolve a response's ids against the set it answers. Pure; the component renders the result. */
-export function resolveSelection(
+export function resolveChoices(
   survey: Survey | undefined,
   response: SurveyResponse | undefined,
 ): Resolved {
-  const byId = new Map((survey?.ideas || []).map((i) => [i.id, i]));
-  const chosen: Idea[] = [];
+  const byId = new Map((survey?.options || []).map((i) => [i.id, i]));
+  const chosen: Option[] = [];
   const unknown: string[] = [];
 
-  for (const id of response?.selection || []) {
-    const idea = byId.get(id);
-    if (idea) chosen.push(idea);
+  for (const id of response?.choices || []) {
+    const option = byId.get(id);
+    if (option) chosen.push(option);
     else unknown.push(id);
   }
 
@@ -81,7 +83,7 @@ export function resolveSelection(
  * opens the whole set — the defaults (1, and 5 or one fewer than the set) never reach it.
  */
 export function boundsLabel(survey: Survey): string {
-  const n = survey.ideas.length;
+  const n = survey.options.length;
   const { minChoices: min, maxChoices: max } = survey;
   if (min === max) return `Choose ${min} of ${n}`;
   if (min === 0 && max >= n) return `Choose any of ${n}`;

@@ -8,9 +8,9 @@
  * `update_item`, and both produce the same record. Adding a control here would create a third
  * way to answer that neither of them shares.
  *
- * The two columns are a before/after of one pass. Left is what was given — the set of ideas as
+ * The two columns are a before/after of one pass. Left is what was given — the set of options as
  * code generation inlined it. Right is what came back — the selection in priority order, and
- * the one new idea. Ideas that were chosen are dimmed on the left rather than removed, so the
+ * the one new option. Options that were chosen are dimmed on the left rather than removed, so the
  * column keeps its shape and what was passed over stays visible.
  *
  * Injected into the shared View from @graffiticode/l0000-view, which supplies `state.data` and
@@ -18,9 +18,9 @@
  */
 import "../../index.css";
 import type { FormProps, CompileError } from "@graffiticode/l0000-view";
-import { boundsLabel, resolveSelection } from "../../lib/survey";
+import { boundsLabel, resolveChoices } from "../../lib/survey";
 import type { Compiled } from "../../lib/survey";
-import { Empty, ErrorList, IdeaRow, Panel } from "./kit";
+import { Empty, ErrorList, OptionRow, Panel } from "./kit";
 
 export const Survey = ({ state }: FormProps) => {
   const compileErrors: CompileError[] = state.errors ?? [];
@@ -35,7 +35,7 @@ export const Survey = ({ state }: FormProps) => {
     );
   }
 
-  if (!survey || !Array.isArray(survey.ideas)) {
+  if (!survey || !Array.isArray(survey.options)) {
     return (
       <div className="l0182-survey mx-auto max-w-4xl p-6">
         <Empty>Nothing to show yet — this program has not compiled a survey.</Empty>
@@ -43,12 +43,12 @@ export const Survey = ({ state }: FormProps) => {
     );
   }
 
-  const { chosen, unknown, chosenIds } = resolveSelection(survey, response);
+  const { chosen, unknown, chosenIds } = resolveChoices(survey, response);
   const answered = !!response;
 
   return (
     <div className="l0182-survey mx-auto flex max-w-4xl flex-col gap-6 p-6">
-      {/* Title, then the survey's own words, then — as the caption on the ideas panel — the
+      {/* Title, then the survey's own words, then — as the caption on the options panel — the
           bounds line derived from minChoices/maxChoices. `id`, `sessionId` and `instance` are
           deliberately absent: they are the handles a response is keyed by, not something a
           participant should read, and while the id sat here it occupied the line the
@@ -61,11 +61,11 @@ export const Survey = ({ state }: FormProps) => {
       {/* One column on a phone. This is published as an embed and renders inside other people's
           pages, so the layout cannot assume it has the width for two. */}
       <div className="grid gap-6 md:grid-cols-2">
-        <Panel heading="The ideas" caption={boundsLabel(survey)}>
+        <Panel heading="The options" caption={boundsLabel(survey)}>
           <ul className="flex flex-col gap-2">
-            {survey.ideas.map((idea) => (
-              <li key={idea.id}>
-                <IdeaRow text={idea.text} muted={chosenIds.has(idea.id)} />
+            {survey.options.map((option) => (
+              <li key={option.id}>
+                <OptionRow text={option.text} muted={chosenIds.has(option.id)} />
               </li>
             ))}
           </ul>
@@ -87,10 +87,10 @@ export const Survey = ({ state }: FormProps) => {
             <div className="flex flex-col gap-4">
               {chosen.length > 0 && (
                 <ol className="flex flex-col gap-2">
-                  {chosen.map((idea, i) => (
-                    <li key={idea.id}>
-                      <IdeaRow
-                        text={idea.text}
+                  {chosen.map((option, i) => (
+                    <li key={option.id}>
+                      <OptionRow
+                        text={option.text}
                         accent
                         badge={
                           <span className="text-sm font-semibold tabular-nums text-green-700">
@@ -113,12 +113,12 @@ export const Survey = ({ state }: FormProps) => {
                 </div>
               )}
 
-              {response?.idea && (
+              {response?.writeIn && (
                 <div className="flex flex-col gap-1.5 border-t border-zinc-200 pt-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                    New idea — not in the set
+                    Write-in — not in the set
                   </p>
-                  <p className="text-[15px] leading-relaxed text-zinc-800">{response.idea}</p>
+                  <p className="text-[15px] leading-relaxed text-zinc-800">{response.writeIn}</p>
                 </div>
               )}
             </div>

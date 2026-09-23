@@ -14,7 +14,7 @@ import { createRoot } from "react-dom/client";
 import { Survey } from "../src";
 import "../src/index.css";
 
-const ideas = [
+const options = [
   { id: "a3", text: "protect voting rights" },
   { id: "b7", text: "universal healthcare system" },
   { id: "c1", text: "affordable housing" },
@@ -23,11 +23,11 @@ const ideas = [
 ];
 
 const survey = {
-  id: "you-can-choose",
+  id: "civic-priorities",
   sessionId: "7gMeEzUYkHqm3PDRrI8i",
-  instance: "you-can-choose-7",
-  title: "You Can Choose",
-  ideas,
+  instance: "civic-priorities-7",
+  title: "Civic Priorities",
+  options,
   minChoices: 1,
   maxChoices: 3,
 };
@@ -36,19 +36,23 @@ const CASES: Array<[string, any, any[]]> = [
   ["Awaiting a response", { survey }, []],
   [
     "A full response",
-    { survey, response: { selection: ["c1", "a3", "e4"], idea: "make public transit free" } },
+    { survey, response: { choices: ["c1", "a3", "e4"], writeIn: "make public transit free" } },
     [],
   ],
   [
-    "A contributed idea and nothing chosen",
-    { survey, response: { selection: [], idea: "ranked-choice voting" } },
+    "A contributed option and nothing chosen",
+    { survey, response: { choices: [], writeIn: "ranked-choice voting" } },
     [],
   ],
-  ["An id naming nothing in the set", { survey, response: { selection: ["c1", "gone"] } }, []],
+  ["An id naming nothing in the set", { survey, response: { choices: ["c1", "gone"] } }, []],
   [
     "A compile error",
     {},
-    [{ message: 'survey: needs `id`, the survey being taken, e.g. survey [id "you-can-choose"].' }],
+    [
+      {
+        message: 'survey: needs `id`, the survey being taken, e.g. survey [id "civic-priorities"].',
+      },
+    ],
   ],
   ["Nothing compiled", {}, []],
 ];

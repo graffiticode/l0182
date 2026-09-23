@@ -5,9 +5,9 @@ repository.
 
 ## What this is
 
-L0182 is a Graffiticode dialect for **taking collective-intelligence surveys**. A program names
-the survey being taken and — once something has answered — carries the response to it: the ideas
-chosen in priority order, plus one new idea that was not in the set.
+L0182 is a Graffiticode dialect for **taking surveys**. A program names
+the survey being taken and — once something has answered — carries the response to it: the options
+chosen in priority order, plus one new option that was not in the set.
 
 Three commitments the rest of the design follows from:
 
@@ -15,9 +15,9 @@ Three commitments the rest of the design follows from:
   or submission, and there is no player anywhere in this repo. Anything that would reintroduce
   a survey-taking flow here is the wrong direction; that belongs to a different language or a
   different client reading this record.
-- **The survey is not in the language either.** A program says `id "you-can-choose"` and nothing
-  else about it: the ideas, the title, the instructions and the bounds are read from the back end
-  by the compiler (`src/source.ts`). There is no word for a set of ideas, and adding one would
+- **The survey is not in the language either.** A program says `id "civic-priorities"` and nothing
+  else about it: the options, the title, the instructions and the bounds are read from the back end
+  by the compiler (`src/source.ts`). There is no word for a set of options, and adding one would
   hand the survey to whoever takes it. The client does not see the survey until the first turn
   instantiates it.
 - **The code is the interface.** A person writes the response in the console's editor; an agent
@@ -62,7 +62,7 @@ from the root has the wrong cwd:
 
 ```bash
 npm run -w packages/core test -- src/survey.test.ts
-npm run -w packages/core test -- src/survey.test.ts -t "selection"
+npm run -w packages/core test -- src/survey.test.ts -t "choices"
 ```
 
 Core tests compile through `src/harness.ts` — `compile(src, values)` and `errorOf(src, values)`,
@@ -164,8 +164,8 @@ for exactly this reason. The generated Checker methods here walk the tree and do
 
 This is the load-bearing consequence of deleting the player. Nothing at delivery time can hold a
 response inside the authored bounds, so `survey.ts` checks more than a form-backed language
-would need to: every `selection` id exists in the set, none repeats, the count is within
-`min-choices`/`max-choices`, and `idea` does not repeat something already in the set. Removing
+would need to: every `choices` id exists in the set, none repeats, the count is within
+`min-choices`/`max-choices`, and `write-in` does not repeat something already in the set. Removing
 one of those does not degrade a warning — it makes a meaningless record compile.
 
 ### Error messages are a product surface
@@ -173,32 +173,32 @@ one of those does not degrade a warning — it makes a meaningless record compil
 The generator is an LLM that reads a compile error and tries again, so the wording is not a
 diagnostic. Every message names the fix:
 
-> survey: `max-choices` (9) is more than the 3 ideas in the set, so there are never enough ideas
-> to pick that many. Add ideas or lower `max-choices`.
+> survey: `max-choices` (9) is more than the 3 options in the set, so there are never enough options
+> to pick that many. Add options or lower `max-choices`.
 
 The tests assert on that text, not merely that compilation failed. A message that stops naming
 the fix is a regression even when the program still errors.
 
-### A selection names an idea by text, by id, or by position
+### `choices` names an option by text, by id, or by position
 
-`selection` takes any of the three, and `resolveResponse` normalises all of them to ids before
+`choices` takes any of the three, and `resolveResponse` normalises all of them to ids before
 they reach the output — so the compiled record is identical whichever was written and the input
 form costs nothing downstream.
 
 **Text is not a convenience. It is the only notation whoever answers can actually use**, and
-leaving it out was a real bug rather than a missing nicety. The ideas live in the survey, so they
+leaving it out was a real bug rather than a missing nicety. The options live in the survey, so they
 do not exist until the program compiles — which means whoever writes the response, a person or
 the code generator, has never seen an id or a position. A guessed position that lands in range
-compiles cleanly and records the wrong ideas, silently. That shipped: an `update_item` asking for
-three ideas by name produced `selection [2 3 5]` and recorded three different ones.
+compiles cleanly and records the wrong options, silently. That shipped: an `update_item` asking for
+three ideas by name produced `selection [2 3 5]` (the word before `choices`) and recorded three different ones.
 
 Three smaller rules hold it together:
 
 - **A number is always a position, a string never is**, so those cannot collide even for a set
-  whose ids look like numbers: `selection [1]` is the second idea, `selection ["1"]` is the idea
+  whose ids look like numbers: `choices [1]` is the second option, `choices ["1"]` is the option
   called `1`. Between the two string forms an id wins — it is the canonical key.
 - **Text matching folds case, trims, and collapses whitespace**, because a generator reflows
-  lines. Two ideas that normalise to the same key make that key ambiguous, and it is refused by
+  lines. Two options that normalise to the same key make that key ambiguous, and it is refused by
   name rather than resolved to the first.
 - **0-based positions**, matching the ids the language derives for a set that has none — a
   position _is_ the number in the derived id. The range message says where counting starts,
@@ -210,22 +210,22 @@ Three smaller rules hold it together:
 directory hard-coded relative to the module (`new URL("../data/", import.meta.url)`) so it
 resolves identically from `dist/`, from `src/` under vitest, and inside the Docker image.
 
-- **A survey id names a SET of files.** `you-can-choose-1.json` … `you-can-choose-12.json` are
-  versions of one survey, and `id "you-can-choose"` draws one of them **without replacement**: a
+- **A survey id names a SET of files.** `civic-priorities-1.json` … `civic-priorities-12.json` are
+  versions of one survey, and `id "civic-priorities"` draws one of them **without replacement**: a
   drawn version is marked taken until every version has been taken, at which point the marks
-  clear and the cycle restarts. `id "you-can-choose-7"` names a version outright — no draw, no
+  clear and the cycle restarts. `id "civic-priorities-7"` names a version outright — no draw, no
   mark — and that is what pins an answer to the version it answers.
-- **`<id>-<n>` is the whole naming rule**, so `you-can` cannot match `you-can-choose-3`, and an
+- **`<id>-<n>` is the whole naming rule**, so `civic` cannot match `civic-priorities-3`, and an
   id is validated against `[a-z0-9][a-z0-9-]*` **before** any disk access: nothing resembling a
   path reaches `readFileSync`.
 - **`session-id` is what survives the answering turn.** Adding a response rewrites the program,
-  so it compiles again, and a second draw would check the answer against ideas its taker never
+  so it compiles again, and a second draw would check the answer against options its taker never
   saw. The word is written `session-id get-val-public "itemId"`, which the console resolves at
   PARSE time (`console/src/lib/code-generation/generate-for-request.ts:516`) — so from turn two
   the program carries the literal id and `drawn: Map<session, instance>` hands back the same
   version. L0158 uses the same mechanism.
 - **An unknown session DRAWS rather than refusing.** Refusing was considered and is wrong: a
-  first turn may legitimately arrive with its answer already in it ("answer the you-can-choose
+  first turn may legitimately arrive with its answer already in it ("answer the civic-priorities
   survey with …" reaches the compiler as one program), and from inside the source a brand-new
   session and a forgotten one are indistinguishable.
 - **An empty `session-id` is no session.** That is what an unresolved `get-val-public` folds to,
@@ -248,12 +248,12 @@ does not have:
 also the shape any other back end plugs into: a survey does not have to come from a file, and
 nothing in the language changes if it stops doing so.
 
-### Ideas keep the service's ids when they have them
+### Options keep the service's ids when they have them
 
-A survey's data holds a bare string or a `{id, text}` record per idea. An entry that names its
-own id keeps it; one that does not is numbered positionally, `i0` upward. Both forms exist for
+A survey's data holds a bare string or a `{id, text}` record per option. An entry that names its
+own id keeps it; one that does not is numbered positionally, `o0` upward. Both forms exist for
 one reason: a survey comes from somewhere, and when that somewhere carried ids they have to
-survive into `selection`, because a selection of positional ids means nothing back at the service
+survive into `choices`, because a selection of positional ids means nothing back at the service
 the set came from.
 
 ### `PROG` ignores `options.data`, deliberately
@@ -357,7 +357,7 @@ by stage**. Adding a control would create a third way to answer that neither of 
 clients — the console editor and `update_item` — shares.
 
 It shows the initial state and the current one **side by side**: left is the set as code
-generation inlined it, right is what came back. Ideas carried into `selection` are dimmed on the
+generation inlined it, right is what came back. Options carried into `choices` are dimmed on the
 left rather than removed, so the column keeps its shape and what was passed over stays visible.
 The columns stack on a narrow viewport, because this is published as an embed and renders inside
 other people's pages. A survey with no `response` shows the right column explicitly empty and
@@ -371,12 +371,12 @@ here and L0179 is again its only user.
 **There is no DOM in the view suite, deliberately.** `vitest.config.ts` pulls in no jsdom, which
 is what keeps a published component's dev tree free of a rendering library. So the logic that
 can be wrong without looking wrong lives in `lib/survey.ts` as pure functions —
-`resolveSelection` and `boundsLabel` — and `lib/survey.test.ts` is what tests it. Do not reach
+`resolveChoices` and `boundsLabel` — and `lib/survey.test.ts` is what tests it. Do not reach
 for a render test; put the logic in `lib/` and keep the component a projection of it.
 `embed/dev.html` is the way to _look_ at it: it renders every state against fixed models with no
 API behind them, and Vite builds only `index.html`, so it never reaches the embed bundle.
 
-**`resolveSelection` names an unresolvable id rather than dropping it.** The compiler refuses
+**`resolveChoices` names an unresolvable id rather than dropping it.** The compiler refuses
 those, so they only arrive on a record assembled outside it — but silently dropping one would
 render a shorter ranking than the one actually recorded, which is the kind of wrong that looks
 right.
@@ -471,14 +471,14 @@ obvious next feature request re-proposes one of them:
 - **An in-memory mock backend** with a 20-idea seed pool, least-shown-first sampling over a
   rotating window, and per-actor-class tallies. It was the only reason for `--max-instances=1`.
 - **An adaptive sampler**, `sample N`, and the whole "the ideas are not authored, they live in
-  the pool" model. The ideas are a survey's own now, read from `data/` — never authored, and
+  the pool" model. The options are a survey's own now, read from `data/` — never authored, and
   never sampled within a version.
 - **A five-screen React player** (`start`/`select`/`rank`/`contribute`/`results`/`thanks`), its
   `KINDS` registry, drag-and-drop ranking, and the `navigate`/`response` action split.
 - **`participants` and `audience`**, the human-vs-agent gate and the per-population ranking.
   Both clients are the same client now, so there is no population to separate.
 - **`scripts/post-response.mjs`**, which posted a response as task data. Responses are code.
-- **The words that authored a survey** — `ideas`, `title`, `instructions`, `min-choices`,
+- **The words that authored a survey** — `ideas` (now `options`, a key in the data, never a word), `title`, `instructions`, `min-choices`,
   `max-choices`, and `name` — plus **`fetch`** (`src/fetch.ts`, its scheme and host checks and
   its timeout), CSV reading, and the whole "point the program at a dataset" model. A survey is
   one JSON file that says everything it is; CSV could carry a list and nothing else, so a survey
@@ -504,7 +504,7 @@ not be back-ported at arity 2 because L0180 already had `title` at arity 1 insid
 ## Not built yet
 
 Aggregating across responses — a group ranking, a tally, or any live result. Authoring a survey:
-the ideas, the wording and the bounds belong to `data/` and no word writes them. Reading a survey
+the options, the wording and the bounds belong to `data/` and no word writes them. Reading a survey
 from anywhere but the filesystem, or authenticating to one — `setSource` is where that would go.
 A durable session→version memory (see the limits above). Sampling within a survey: a version is
 served whole and in order. An interactive survey-taking flow. Conventional questionnaire items —

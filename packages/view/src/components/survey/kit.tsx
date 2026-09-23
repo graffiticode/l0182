@@ -43,13 +43,13 @@ export function Panel({
 }
 
 /**
- * One idea, as a row.
+ * One option, as a row.
  *
  * Not a button. Nothing here is interactive — the record is edited as code — so rendering these
  * as controls would announce them to a screen reader as things to press and promise an
  * interaction that does not exist.
  */
-export function IdeaRow({
+export function OptionRow({
   text,
   badge,
   muted,

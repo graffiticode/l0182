@@ -38,7 +38,7 @@ export const attributeFields: Record<string, AttributeMeta> = {
     field: "id",
     expects: "string",
     description:
-      'The survey being taken, e.g. id "you-can-choose". The ideas, the wording and the bounds all come from the survey itself — the program names it and nothing more. An id naming one version outright (id "you-can-choose-7") takes that version rather than drawing one.',
+      'The survey being taken, e.g. id "civic-priorities". The options, the wording and the bounds all come from the survey itself — the program names it and nothing more. An id naming one version outright (id "civic-priorities-7") takes that version rather than drawing one.',
   },
   SESSION_ID: {
     field: "sessionId",
@@ -46,17 +46,17 @@ export const attributeFields: Record<string, AttributeMeta> = {
     description:
       'One taking of a survey. Write it exactly as `session-id get-val-public "itemId"` — it is what keeps a response with the version of the survey it answers.',
   },
-  SELECTION: {
-    field: "selection",
+  CHOICES: {
+    field: "choices",
     expects: "refs",
     description:
-      'The ideas chosen, in priority order — the order IS the ranking, first is most important. Name each one by its exact text: selection ["clean air and water" "affordable housing"]. An id in quotes works too, and a bare whole number is a position counting from 0 — but reach for those only when you can see the set, because a wrong position records the wrong idea and still compiles.',
+      'The options chosen, in priority order — the order IS the ranking, first is most important. Name each one by its exact text: choices ["clean air and water" "affordable housing"]. An id in quotes works too, and a bare whole number is a position counting from 0 — but reach for those only when you can see the set, because a wrong position records the wrong option and still compiles.',
   },
-  IDEA: {
-    field: "idea",
+  WRITE_IN: {
+    field: "writeIn",
     expects: "string",
     description:
-      "One new idea, contributed by whoever answered. It must not repeat an idea already in the set — that is what makes it new.",
+      "One new option, contributed by whoever answered. It must not repeat an option already in the set — that is what makes it new.",
   },
 };
 
@@ -73,7 +73,7 @@ export const typeOf = (meta: AttributeMeta): string =>
  */
 export const validAttributes: Record<string, string[]> = {
   survey: ["id", "session-id", "response"],
-  response: ["selection", "idea"],
+  response: ["choices", "write-in"],
 };
 
 export const wordOf = (name: string): string => name.toLowerCase().replace(/_/g, "-");
@@ -132,13 +132,13 @@ const showValue = (v: any): string => {
 export function checkValue(name: string, meta: AttributeMeta, raw: any): string | null {
   const word = wordOf(name);
   if (meta.expects === "refs") {
-    // A reference to an idea: its id as a string, or its position as a number. The two can never
+    // A reference to an option: its id as a string, or its position as a number. The two can never
     // collide — even for a set whose ids look like numbers — because the notation says which is
-    // meant. Resolving them needs the ideas in hand, so that happens in `survey.ts`; here we only
+    // meant. Resolving them needs the options in hand, so that happens in `survey.ts`; here we only
     // reject an entry that is neither form.
     if (!Array.isArray(raw) || !raw.length) {
       return (
-        `${word}: expected a list of ideas — each named by its text, its id, or its position, ` +
+        `${word}: expected a list of options — each named by its text, its id, or its position, ` +
         `e.g. ${word} ["clean air and water" "affordable housing"].`
       );
     }
@@ -148,7 +148,7 @@ export function checkValue(name: string, meta: AttributeMeta, raw: any): string 
     );
     if (bad >= 0) {
       return (
-        `${word}: entry ${bad + 1} is ${showValue(raw[bad])}; every entry must be an idea's id ` +
+        `${word}: entry ${bad + 1} is ${showValue(raw[bad])}; every entry must be an option's id ` +
         'in "quotes", or its position as a whole number.'
       );
     }
@@ -172,14 +172,14 @@ export function checkValue(name: string, meta: AttributeMeta, raw: any): string 
 export function mergeAttributes(attrs: any, where: string): Record<string, any> {
   if (!Array.isArray(attrs)) {
     throw new Error(
-      `${where}: expected an attribute list in [brackets], e.g. [title "…" ideas ["…" "…"]].`,
+      `${where}: expected an attribute list in [brackets], e.g. [id "team-retro" session-id get-val-public "itemId"].`,
     );
   }
   const out: Record<string, any> = {};
   for (const a of attrs) {
     if (a === null || typeof a !== "object" || Array.isArray(a)) {
       throw new Error(
-        `${where}: every entry must be an attribute applied to a value, e.g. [title "…" max-choices 5]. ` +
+        `${where}: every entry must be an attribute applied to a value, e.g. [id "team-retro"]. ` +
           `Got ${showValue(a)}.`,
       );
     }

@@ -17,7 +17,7 @@ const SRC = `survey [ id "fixture" ]..`;
 
 setSource(async (id) => ({
   instance: `${id}-1`,
-  data: { title: "T", ideas: ["one", "two"] },
+  data: { title: "T", options: ["one", "two"] },
 }));
 
 /** Compile with an explicit `data`, the way a round trip does. */
@@ -42,14 +42,14 @@ describe("PROG and the data it is handed", () => {
   it("does not let a stored response in data become the response", async () => {
     // Whoever answers writes it in code. A response arriving as data is a leftover from the
     // language's previous shape, and letting it through would resurrect a model nothing writes.
-    const out = await compileWith({ response: { selection: ["i0"] } });
+    const out = await compileWith({ response: { choices: ["o0"] } });
     expect(out.response).toBeUndefined();
   });
 
   it("does not let a stale compile carried in data shadow the fresh one", async () => {
-    const out = await compileWith({ survey: { title: "STALE", ideas: [] } });
+    const out = await compileWith({ survey: { title: "STALE", options: [] } });
     expect(out.survey.title).toBe("T");
-    expect(out.survey.ideas).toHaveLength(2);
+    expect(out.survey.options).toHaveLength(2);
   });
 
   it("is untouched by the { data, errors } envelope, singly or doubly wrapped", async () => {
@@ -67,7 +67,7 @@ describe("PROG and the data it is handed", () => {
   it("survives data that is absent, empty, or not an object", async () => {
     for (const d of [undefined, {}, null, "nope", []]) {
       const out = await compileWith(d as any);
-      expect(out.survey.ideas).toHaveLength(2);
+      expect(out.survey.options).toHaveLength(2);
     }
   });
 });

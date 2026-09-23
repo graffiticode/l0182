@@ -1,47 +1,47 @@
 {
   "id": "0182",
-  "description": "Collective-intelligence surveys — taking a survey the back end holds and recording the response: the ideas chosen in priority order plus one new idea that was not in the set. A program names the survey with `id \"…\"`; its ideas, title, instructions and bounds come from the survey itself and CANNOT be written in code. A survey with several versions draws one per session. L0182 describes no flow and has no interactive player.",
+  "description": "Surveys — taking a survey the back end holds and recording the response: the options chosen in priority order plus one new option that was not in the set. A program names the survey with `id \"…\"`; its options, title, instructions and bounds come from the survey itself and CANNOT be written in code. A survey with several versions draws one per session. L0182 describes no flow and has no interactive player.",
   "supported_item_types": ["survey", "response"],
   "example_prompts": [
     {
-      "prompt": "Answer the you-can-choose survey for me — I pick whichever two ideas you think matter most.",
+      "prompt": "Answer the civic-priorities survey for me — I pick whichever two options you think matter most.",
       "produces": "response",
-      "notes": "The ordinary request: a survey exists and what is brought to it is an answer. `survey [id \"you-can-choose\" session-id get-val-public \"itemId\" response [...]]` — the ideas come back from the survey, and the program never writes them."
+      "notes": "The ordinary request: a survey exists and what is brought to it is an answer. `survey [id \"civic-priorities\" session-id get-val-public \"itemId\" response [...]]` — the options come back from the survey, and the program never writes them."
     },
     {
       "prompt": "Answer the team-retro survey with cutting the build time in half first, then the flaky tests.",
       "produces": "response",
-      "notes": "`selection` names the ideas chosen and the order IS the ranking. Name each by its exact text — the ideas live in the survey, so the ids cannot be known when the response is written."
+      "notes": "`choices` names the options chosen and the order IS the ranking. Name each by its exact text — the options live in the survey, so the ids cannot be known when the response is written."
     },
     {
-      "prompt": "Add my own idea alongside my selection: make public transit free.",
+      "prompt": "Add my own option alongside my choices: make public transit free.",
       "produces": "response",
-      "notes": "`idea` must not repeat one already in the set — that is what makes it new."
+      "notes": "`write-in` must not repeat one already in the set — that is what makes it new."
     },
     {
-      "prompt": "Record just a new idea — I do not want to pick any of the existing ones.",
+      "prompt": "Record just a new option — I do not want to pick any of the existing ones.",
       "produces": "response",
-      "notes": "`idea` may stand alone; `selection` comes back empty, where the survey's floor allows it."
+      "notes": "`write-in` may stand alone; `choices` comes back empty, where the survey's floor allows it."
     },
     {
-      "prompt": "Reorder my selection so the housing idea comes first.",
+      "prompt": "Reorder my selection so the housing option comes first.",
       "produces": "response",
-      "notes": "Reordering `selection` IS re-ranking; there is no separate rank step."
+      "notes": "Reordering `choices` IS re-ranking; there is no separate rank step."
     },
     {
       "prompt": "Which surveys can I take?",
       "produces": "survey",
-      "notes": "you-can-choose, team-retro, city-budget, product-features and school. An id that does not exist is a compile error naming the ones that do."
+      "notes": "civic-priorities, team-retro, city-budget, product-features and school. An id that does not exist is a compile error naming the ones that do."
     },
     {
-      "prompt": "Take version 7 of you-can-choose rather than whichever one it gives me.",
+      "prompt": "Take version 7 of civic-priorities rather than whichever one it gives me.",
       "produces": "survey",
-      "notes": "`id \"you-can-choose-7\"` takes that version outright, with no draw. The version drawn for a session is in `instance` in the compiled record."
+      "notes": "`id \"civic-priorities-7\"` takes that version outright, with no draw. The version drawn for a session is in `instance` in the compiled record."
     },
     {
-      "prompt": "Set up a survey asking my team what to fix first, with these eight ideas.",
+      "prompt": "Set up a survey asking my team what to fix first, with these eight options.",
       "produces": "survey",
-      "notes": "NOT possible here. A survey's ideas, wording and bounds belong to the back end, and no word writes them; L0182 only takes surveys that already exist."
+      "notes": "NOT possible here. A survey's options, wording and bounds belong to the back end, and no word writes them; L0182 only takes surveys that already exist."
     }
   ]
 }

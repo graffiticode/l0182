@@ -19,7 +19,7 @@ import { compiler, lexicon, loadSurvey, validAttributes } from "./index.js";
 
 // Documented programs run against the REAL surveys in data/, with no stub anywhere. A program
 // here is exactly what the generator will write, and what it names has to exist — an example
-// naming a survey nobody installed, or an idea no version of it holds, is a program that fails
+// naming a survey nobody installed, or an option no version of it holds, is a program that fails
 // for every user who copies it.
 //
 // That is why documented ANSWERS use a survey with a single version: a survey with several
@@ -93,7 +93,7 @@ describe("spec programs", () => {
 
   test("the starter template carries the session, which is what holds an answer to its survey", () => {
     // A program that omits it draws again on the turn that answers, and the answer is then
-    // checked against ideas its taker never saw.
+    // checked against options its taker never saw.
     expect(readFileSync("spec/template.gc", "utf-8")).toContain(
       'session-id get-val-public "itemId"',
     );
@@ -103,9 +103,9 @@ describe("spec programs", () => {
     // It is what the generator starts from, so a template that stops at the survey teaches half
     // the language — and the half it leaves out is the one a client always has to produce.
     const out: any = await compileSrc(readFileSync("spec/template.gc", "utf-8"));
-    expect(out.survey.ideas.length).toBeGreaterThan(1);
-    expect(out.response.selection.length).toBeGreaterThan(0);
-    expect(out.response.idea).toBeTruthy();
+    expect(out.survey.options.length).toBeGreaterThan(1);
+    expect(out.response.choices.length).toBeGreaterThan(0);
+    expect(out.response.writeIn).toBeTruthy();
   });
 
   test("the starter template leaves the choice bounds to their defaults", () => {
@@ -115,11 +115,11 @@ describe("spec programs", () => {
     expect(src).not.toMatch(/min-choices|max-choices/);
   });
 
-  test("the starter template names its ideas by text, not by id or position", async () => {
-    // The ideas live in the survey, so whoever writes the response has not seen an id or a
+  test("the starter template names its options by text, not by id or position", async () => {
+    // The options live in the survey, so whoever writes the response has not seen an id or a
     // position. Copying a positional selection out of here is exactly the mistake that shipped.
     const src = readFileSync("spec/template.gc", "utf-8");
-    const selection = src.match(/selection \[([^\]]*)\]/)?.[1] ?? "";
+    const selection = src.match(/choices \[([^\]]*)\]/)?.[1] ?? "";
     expect(selection.trim()).toBeTruthy();
     expect(selection).not.toMatch(/\d/);
   });
@@ -189,9 +189,9 @@ describe("schema.json describes what the compiler actually emits", () => {
   test("a survey with a full response validates", async () => {
     const out: any = await compileSrc(
       `survey [ id "team-retro-1" session-id get-val-public "itemId"
-         response [ selection ["t3" "cut the build time in half"] idea "a new one" ] ]..`,
+         response [ choices ["t3" "cut the build time in half"] write-in "a new one" ] ]..`,
     );
-    expect(out.response).toEqual({ selection: ["t3", "t2"], idea: "a new one" });
+    expect(out.response).toEqual({ choices: ["t3", "t2"], writeIn: "a new one" });
     expect(out.survey.sessionId).toBe("docs");
     check(out, "a full response");
   });
@@ -248,7 +248,7 @@ describe("the surveys installed in data/", () => {
   const envelope = (f: string): any => JSON.parse(readFileSync(join("data", f), "utf-8"));
   const read = (f: string): any[] => {
     const parsed = envelope(f);
-    return Array.isArray(parsed) ? parsed : parsed.ideas;
+    return Array.isArray(parsed) ? parsed : parsed.options;
   };
 
   test("every file is a version of some survey", () => {
@@ -297,16 +297,16 @@ describe("the surveys installed in data/", () => {
     test(`${instance} is a survey L0182 accepts`, async () => {
       const file = files.find((f) => f.startsWith(`${instance}.`))!;
       const set = read(file);
-      expect(set.length, `${file} has too few ideas`).toBeGreaterThan(1);
+      expect(set.length, `${file} has too few options`).toBeGreaterThan(1);
       // Named outright, so this reads the file under test rather than drawing a sibling.
       const out: any = await compileSrc(`survey [ id "${instance}" ]..`);
       expect(out.survey.instance).toBe(instance);
-      expect(out.survey.ideas).toHaveLength(set.length);
+      expect(out.survey.options).toHaveLength(set.length);
     });
   }
 
   test("a survey id reaches one of its versions", async () => {
-    const loaded = await loadSurvey("you-can-choose", {});
+    const loaded = await loadSurvey("civic-priorities", {});
     expect(instances).toContain(loaded.instance);
   });
 

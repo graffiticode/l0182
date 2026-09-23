@@ -2,14 +2,22 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "L0182",
   "title": "L0182",
-  "description": "A compiled L0182 survey: the set of ideas someone was asked to choose between, drawn from the survey's own data by the compiler, and — once something has answered — the response to it, being the ideas chosen in priority order plus one new idea that was not in the set.",
+  "description": "A compiled L0182 survey: the set of options someone was asked to choose between, drawn from the survey's own data by the compiler, and — once something has answered — the response to it, being the options chosen in priority order plus one new option that was not in the set.",
   "type": "object",
   "required": ["survey"],
   "properties": {
     "survey": {
-      "description": "The set of ideas and the bounds a response must satisfy. None of it is written in the program: the compiler reads it from the survey the program names.",
+      "description": "The set of options and the bounds a response must satisfy. None of it is written in the program: the compiler reads it from the survey the program names.",
       "type": "object",
-      "required": ["id", "instance", "instructions", "ideas", "minChoices", "maxChoices"],
+      "required": [
+        "id",
+        "instance",
+        "style",
+        "instructions",
+        "options",
+        "minChoices",
+        "maxChoices"
+      ],
       "properties": {
         "id": {
           "description": "The survey being taken, as the program named it. Ties a response back to the survey it answers.",
@@ -20,30 +28,34 @@
           "type": "string"
         },
         "instance": {
-          "description": "Which version of the survey was taken — the file its ideas came from, e.g. you-can-choose-7. A survey with several versions draws one of them per session; writing this as the id takes that version outright.",
+          "description": "Which version of the survey was taken — the file its options came from, e.g. civic-priorities-7. A survey with several versions draws one of them per session; writing this as the id takes that version outright.",
           "type": "string"
         },
+        "style": {
+          "description": "How a response answers this survey. ranked-choice: pick some options, rank them, and optionally add a write-in.",
+          "const": "ranked-choice"
+        },
         "title": {
-          "description": "Shown above the ideas.",
+          "description": "Shown above the options.",
           "type": "string"
         },
         "instructions": {
-          "description": "What the participant is asked to do, shown under the title and above the ideas. Always present: the compiler substitutes a generic line when the survey's data supplies none. The bounds line beneath it is derived from minChoices and maxChoices.",
+          "description": "What the participant is asked to do, shown under the title and above the options. Always present: the compiler substitutes a generic line when the survey's data supplies none. The bounds line beneath it is derived from minChoices and maxChoices.",
           "type": "string"
         },
-        "ideas": {
+        "options": {
           "description": "The set a response is chosen from, compiled in from the survey's own data. A program cannot write it.",
           "type": "array",
           "minItems": 2,
-          "items": { "$ref": "#/$defs/idea" }
+          "items": { "$ref": "#/$defs/option" }
         },
         "minChoices": {
-          "description": "Fewest ideas a response may select. The survey's own, defaulting to 1. Enforced by the compiler, which is the only enforcement there is — nothing renders a survey interactively.",
+          "description": "Fewest options a response may select. The survey's own, defaulting to 1. Enforced by the compiler, which is the only enforcement there is — nothing renders a survey interactively.",
           "type": "integer",
           "minimum": 0
         },
         "maxChoices": {
-          "description": "Most ideas a response may select. The survey's own; never more than the number of ideas, defaulting to 5, or one fewer than the set when the set is smaller, so a default never permits choosing every idea.",
+          "description": "Most options a response may select. The survey's own; never more than the number of options, defaulting to 5, or one fewer than the set when the set is smaller, so a default never permits choosing every option.",
           "type": "integer",
           "minimum": 1
         }
@@ -53,16 +65,16 @@
     "response": {
       "description": "The answer to this survey. Absent until something answers. Written in code — by a person in the editor, or by an agent through update_item — so both clients produce the identical shape.",
       "type": "object",
-      "required": ["selection"],
+      "required": ["choices"],
       "properties": {
-        "selection": {
-          "description": "The ids of the ideas chosen, in priority order. The order IS the ranking, first is most important. Empty when only a new idea was contributed. Source may name an idea by its id in quotes or by its position as a number; the compiler resolves positions, so compiled output is always ids.",
+        "choices": {
+          "description": "The ids of the options chosen, in priority order. The order IS the ranking, first is most important. Empty when only a new option was contributed. Source may name an option by its id in quotes or by its position as a number; the compiler resolves positions, so compiled output is always ids.",
           "type": "array",
           "uniqueItems": true,
           "items": { "type": "string" }
         },
-        "idea": {
-          "description": "One new idea from whoever answered, which was not already in the set.",
+        "writeIn": {
+          "description": "One new option from whoever answered, which was not already in the set.",
           "type": "string",
           "minLength": 1
         }
@@ -72,9 +84,9 @@
   },
   "additionalProperties": false,
   "$defs": {
-    "idea": {
-      "title": "Idea",
-      "description": "One idea in the set. The id is the originating service's own where the survey's data carried one, and positional (i0 upward) where it did not — a selection names ids, never text.",
+    "option": {
+      "title": "Option",
+      "description": "One option in the set. The id is the originating service's own where the survey's data carried one, and positional (o0 upward) where it did not — a selection names ids, never text.",
       "type": "object",
       "required": ["id", "text"],
       "properties": {

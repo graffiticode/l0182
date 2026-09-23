@@ -12,7 +12,7 @@ import { loadSurvey, resetDraws } from "./source.js";
 import { compile, errorOf } from "./harness.js";
 
 /** The survey with several versions; the draw has nothing to do without one. */
-const MANY = "you-can-choose";
+const MANY = "civic-priorities";
 const versions = readdirSync("data").filter((f) => f.startsWith(`${MANY}-`)).length;
 
 beforeEach(() => resetDraws());
@@ -21,7 +21,7 @@ describe("finding a survey", () => {
   test("a survey id draws one of its versions", async () => {
     const { instance, data } = await loadSurvey(MANY, {});
     expect(instance).toMatch(new RegExp(`^${MANY}-\\d+$`));
-    expect(data.ideas.length).toBeGreaterThan(1);
+    expect(data.options.length).toBeGreaterThan(1);
   });
 
   test("an id naming a version takes that version, and marks nothing", async () => {
@@ -37,7 +37,7 @@ describe("finding a survey", () => {
     expect(data.title).toBeTypeOf("string");
     expect(data.instructions.length).toBeGreaterThan(20);
     expect(data.maxChoices).toBeGreaterThan(0);
-    expect(data.ideas.length).toBeGreaterThan(1);
+    expect(data.options.length).toBeGreaterThan(1);
   });
 
   test("an unknown id names the surveys there are", async () => {
@@ -47,12 +47,12 @@ describe("finding a survey", () => {
   });
 
   test("a prefix of a survey id is not that survey", async () => {
-    // `you-can` must not match `you-can-choose-3`: a version is `<id>-<n>`, nothing looser.
-    await expect(loadSurvey("you-can", {})).rejects.toThrow("there is no survey");
+    // `civic` must not match `civic-priorities-3`: a version is `<id>-<n>`, nothing looser.
+    await expect(loadSurvey("civic", {})).rejects.toThrow("there is no survey");
   });
 
   test("an id that looks like a path is refused before any read", async () => {
-    for (const bad of ["../spec/spec", "/etc/passwd", "you-can-choose/../..", "-leading"]) {
+    for (const bad of ["../spec/spec", "/etc/passwd", "civic-priorities/../..", "-leading"]) {
       await expect(loadSurvey(bad, {})).rejects.toThrow("is not a survey id");
     }
   });
@@ -93,7 +93,7 @@ describe("drawing without replacement", () => {
   });
 
   test("a session that was never seen is drawn for, not refused", async () => {
-    // A first turn can arrive with its answer already written — "answer the you-can-choose
+    // A first turn can arrive with its answer already written — "answer the civic-priorities
     // survey with …" reaches the compiler as one program — and a brand-new session is
     // indistinguishable from one this process has forgotten. Refusing either would break the
     // first case to guard the second, so both draw.
@@ -111,14 +111,14 @@ describe("drawing without replacement", () => {
 });
 
 describe("taking a survey in a program", () => {
-  test("the ideas are compiled in, and the version is recorded", async () => {
+  test("the options are compiled in, and the version is recorded", async () => {
     const out = await compile(`survey [ id "${MANY}" session-id get-val-public "itemId" ]`, {
       itemId: "item-1",
     });
     expect(out.survey.id).toBe(MANY);
     expect(out.survey.sessionId).toBe("item-1");
     expect(out.survey.instance).toMatch(new RegExp(`^${MANY}-\\d+$`));
-    expect(out.survey.ideas.length).toBeGreaterThan(1);
+    expect(out.survey.options.length).toBeGreaterThan(1);
     expect(out.survey.title).toBeTypeOf("string");
     expect(out.response).toBeUndefined();
   });
@@ -129,11 +129,11 @@ describe("taking a survey in a program", () => {
     });
     const answered = await compile(
       `survey [ id "${MANY}" session-id get-val-public "itemId"
-         response [ selection [${JSON.stringify(shown.survey.ideas[0].text)}] ] ]`,
+         response [ choices [${JSON.stringify(shown.survey.options[0].text)}] ] ]`,
       { itemId: "item-2" },
     );
     expect(answered.survey.instance).toBe(shown.survey.instance);
-    expect(answered.response.selection).toEqual([shown.survey.ideas[0].id]);
+    expect(answered.response.choices).toEqual([shown.survey.options[0].id]);
   });
 
   test("an unresolved itemId is no session at all", async () => {
@@ -146,7 +146,7 @@ describe("taking a survey in a program", () => {
   test("a program without `id` is told what to write", async () => {
     const msg = await errorOf('survey [ session-id get-val-public "itemId" ]', { itemId: "x" });
     expect(msg).toContain("needs `id`");
-    expect(msg).toContain('id "you-can-choose"');
+    expect(msg).toContain('id "civic-priorities"');
   });
 
   test("the words that used to build a survey in code are gone", async () => {
@@ -154,12 +154,13 @@ describe("taking a survey in a program", () => {
     // never reaches the compiler. A survey cannot be authored here at all — that is the point.
     for (const gone of [
       'ideas ["a" "b"]',
+      'options ["a" "b"]',
       'title "t"',
       'instructions "i"',
       "min-choices 1",
       "max-choices 2",
-      'name "you-can-choose"',
-      'fetch "https://example.org/ideas.json"',
+      'name "civic-priorities"',
+      'fetch "https://example.org/options.json"',
     ]) {
       const msg = await errorOf(`survey [ id "${MANY}" ${gone} ]`);
       expect(msg, gone).toContain("parse error");

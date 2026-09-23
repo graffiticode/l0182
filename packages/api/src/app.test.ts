@@ -58,7 +58,7 @@ describe("public assets are readable with no token", () => {
   it("does not serve the surveys themselves", async () => {
     // The surveys in core's data/ are what the compiler reads, and nothing more: a survey its
     // taker could read ahead of taking it — or edit — would not be one.
-    for (const f of ["you-can-choose-1.json", "team-retro-1.json", "school-1.json"]) {
+    for (const f of ["civic-priorities-1.json", "team-retro-1.json", "school-1.json"]) {
       expect((await request(app).get(`/${f}`)).status, f).toBe(404);
     }
   });
@@ -105,14 +105,14 @@ describe("cross-origin embedding", () => {
 
 describe("POST /compile", () => {
   it("compiles a survey, in the { data, errors } envelope", async () => {
-    // The ideas come from the survey core holds, so this also proves the server can reach
+    // The options come from the survey core holds, so this also proves the server can reach
     // `data/` from wherever it was started — the one thing a bundled path can get wrong.
     const code = await parser.parse(182, `survey [ id "team-retro" ]..`, lexicon);
     const res = await request(app).post("/compile").send({ code, data: {} });
     expect(res.status).toBe(200);
     expect(res.body.errors).toEqual([]);
     expect(res.body.data.survey.instance).toBe("team-retro-1");
-    expect(res.body.data.survey.ideas.length).toBeGreaterThan(1);
+    expect(res.body.data.survey.options.length).toBeGreaterThan(1);
   });
 
   it("rejects a request missing code or data with 400, not 500", async () => {

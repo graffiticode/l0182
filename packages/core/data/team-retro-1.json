@@ -3,7 +3,7 @@
   "instructions": "These came out of last sprint's retro. Pick the ones you think we should take on first and put them in priority order — your ranking helps us decide what to commit to. Then add one idea of your own that the list is missing.",
   "minChoices": 1,
   "maxChoices": 3,
-  "ideas": [
+  "options": [
     {
       "id": "t1",
       "text": "fix the flaky tests before adding features"

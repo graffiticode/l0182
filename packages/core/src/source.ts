@@ -2,18 +2,18 @@
 /**
  * Where a survey's data comes from.
  *
- * A program says which survey is being taken — `survey [id "you-can-choose" …]` — and nothing
- * about what is in it. The set of ideas, the title, the instructions and the bounds all live
+ * A program says which survey is being taken — `survey [id "civic-priorities" …]` — and nothing
+ * about what is in it. The set of options, the title, the instructions and the bounds all live
  * out here, so that whoever takes the survey has not seen it before the first turn compiles.
  * That is the whole point of the split: a survey the taker could edit is not a survey.
  *
- * A survey is ONE JSON file per version, and everything the survey is lives in it: its ideas, its
+ * A survey is ONE JSON file per version, and everything the survey is lives in it: its options, its
  * title, its instructions and its bounds. CSV was readable here once and is not any more — it
  * carries a list and nothing else, so a survey stored that way had to fall back to generic
  * wording, which is the opposite of what a survey is for.
  *
- * A survey id names a SET of files, one per version of the survey: `you-can-choose-1.json`,
- * `you-can-choose-2.json`, and so on. Taking the survey draws one of them at random WITHOUT
+ * A survey id names a SET of files, one per version of the survey: `civic-priorities-1.json`,
+ * `civic-priorities-2.json`, and so on. Taking the survey draws one of them at random WITHOUT
  * replacement — a drawn file is marked taken until every file for that id has been taken, at
  * which point the marks clear and the cycle starts again — so that a survey with several
  * versions spreads its takers across them rather than piling onto whichever one sorts first.
@@ -22,15 +22,15 @@
  *
  * - **A session keeps its file.** Answering a survey rewrites the program (the response is
  *   written into it), so the program compiles a second time, and a second draw would check the
- *   response against ideas its taker never saw. `session-id` is carried through to here, and a
+ *   response against options its taker never saw. `session-id` is carried through to here, and a
  *   session that has drawn before gets the same file back.
- * - **A file can be named outright.** `id "you-can-choose-7"` loads exactly that file, with no
+ * - **A file can be named outright.** `id "civic-priorities-7"` loads exactly that file, with no
  *   draw and no mark. That is the escape hatch when the memory below has been lost.
  *
  * The memory IS lossy: it is process-local, so a restart or a second server instance forgets it,
  * and a session that comes back afterwards is drawn for again. Refusing that case instead was
  * considered and is WRONG — a first turn may legitimately arrive with its answer already in it
- * ("answer the you-can-choose survey with …" through `create_item`), and a forgotten session and
+ * ("answer the civic-priorities survey with …" through `create_item`), and a forgotten session and
  * a brand-new one are indistinguishable from here. Naming the version as the id is what makes an
  * answer immune. Making the memory durable means a store this language server does not have.
  */
@@ -60,7 +60,7 @@ export interface LoadOptions {
 export type SurveySource = (id: string, options: LoadOptions) => Promise<LoadedSurvey>;
 
 /**
- * An id may name a survey (`you-can-choose`) or one of its files (`you-can-choose-7`). Anything
+ * An id may name a survey (`civic-priorities`) or one of its files (`civic-priorities-7`). Anything
  * outside this shape is refused before the disk is touched, so nothing resembling a path — a
  * slash, a dot, a `..` — ever reaches `readFileSync`.
  */
@@ -143,7 +143,7 @@ const fileSource: SurveySource = async (id, { sessionId } = {}) => {
   if (!ID.test(id)) {
     throw new Error(
       `survey: ${JSON.stringify(id)} is not a survey id. An id is lower-case letters, digits and ` +
-        'dashes, e.g. id "you-can-choose".',
+        'dashes, e.g. id "civic-priorities".',
     );
   }
 
