@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT
+import { showValue } from "./resolve.js";
+
 /**
  * The vocabulary as data.
  *
@@ -24,7 +26,7 @@ export interface AttributeMeta {
   /** The key this word emits. Kebab-case word -> camelCase field where they differ. */
   field: string;
   /** Type asserted before the value is used. Checked in the Transformer, never the Checker — see below. */
-  expects?: "string" | "number" | "refs";
+  expects?: "string" | "number" | "refs" | "ref" | "answer" | "records";
   /** One line, shown in the generated spec. */
   description: string;
 }
@@ -58,11 +60,39 @@ export const attributeFields: Record<string, AttributeMeta> = {
     description:
       "One new option, contributed by whoever answered. It must not repeat an option already in the set — that is what makes it new.",
   },
+  RATINGS: {
+    field: "ratings",
+    expects: "records",
+    description:
+      'The answers to a rating survey, one [item … rating …] list per item: ratings [[item "The course met its goals" rating "Agree"] [item "How likely are you to recommend us?" rating 9]].',
+  },
+  ITEM: {
+    field: "item",
+    expects: "ref",
+    description:
+      "Which item a rating answers. Name it by its exact text; an id in quotes, or a whole-number position counting from 0, work too once you can see the survey.",
+  },
+  RATING: {
+    field: "rating",
+    expects: "answer",
+    description:
+      'The answer on the item\'s scale: a point\'s label ("Agree", "Very satisfied"), or the scale\'s own value as a number (9 on a 0–10 scale is 9 — never a position). An item with its own end words takes those too, and a scale with an opt-out takes its words ("Not applicable").',
+  },
+  COMMENT: {
+    field: "comment",
+    expects: "string",
+    description:
+      "Free text alongside a rating survey's answers, where the survey asks for a comment.",
+  },
 };
 
 /** The signature string the generated spec renders, derived so it cannot drift from the row. */
 export const typeOf = (meta: AttributeMeta): string =>
-  meta.expects === "refs" ? "<list: record>" : `<${meta.expects || "any"}: record>`;
+  meta.expects === "refs" || meta.expects === "records"
+    ? "<list: record>"
+    : meta.expects === "ref" || meta.expects === "answer" || !meta.expects
+      ? "<any: record>"
+      : `<${meta.expects}: record>`;
 
 /**
  * Which words each container accepts, in source spelling.
@@ -73,8 +103,15 @@ export const typeOf = (meta: AttributeMeta): string =>
  */
 export const validAttributes: Record<string, string[]> = {
   survey: ["id", "session-id", "response"],
-  response: ["choices", "write-in"],
+  response: ["choices", "write-in", "ratings", "comment"],
+  ratings: ["item", "rating"],
 };
+
+/**
+ * The containers a program is built from, as opposed to `ratings`, which is a member list —
+ * one attribute list per entry — rather than something a program is.
+ */
+export const itemTypes = ["survey", "response"];
 
 export const wordOf = (name: string): string => name.toLowerCase().replace(/_/g, "-");
 
@@ -111,15 +148,6 @@ export function toPlainObject(val: any): any {
   return val;
 }
 
-/** Name a bad value the way its author wrote it, so the message points at the mistake. */
-const showValue = (v: any): string => {
-  if (typeof v === "string") return JSON.stringify(v);
-  if (v === null) return "null";
-  if (Array.isArray(v)) return "a list";
-  if (typeof v === "object") return "a record";
-  return String(v);
-};
-
 /**
  * Assert a value's type. Returns an error string, or null.
  *
@@ -153,6 +181,42 @@ export function checkValue(name: string, meta: AttributeMeta, raw: any): string 
       );
     }
     return null;
+  }
+  if (meta.expects === "records") {
+    // A member list: each entry is its own [item … rating …] attribute list, merged and checked
+    // by `rating.ts`. Here only the shape — a list of lists — so a flat list fails with the
+    // bracket it is missing rather than as a mystery further in.
+    const example = `${word} [[item "…" rating "Agree"] [item "…" rating 4]]`;
+    if (!Array.isArray(raw) || !raw.length) {
+      return `${word}: expected a list with one [item … rating …] list per answer, e.g. ${example}.`;
+    }
+    const bad = raw.findIndex((v) => !Array.isArray(v));
+    if (bad >= 0) {
+      return (
+        `${word}: entry ${bad + 1} is ${showValue(raw[bad])}; each answer is its own list in ` +
+        `brackets, e.g. ${example}.`
+      );
+    }
+    return null;
+  }
+  if (meta.expects === "ref") {
+    // One entry named the way `choices` names an option: text or id in quotes, or a position.
+    if (
+      (typeof raw === "string" && raw.trim()) ||
+      (typeof raw === "number" && Number.isInteger(raw))
+    ) {
+      return null;
+    }
+    return `${word}: expected an item's text in "quotes" (or its id, or its position as a whole number), got ${showValue(raw)}.`;
+  }
+  if (meta.expects === "answer") {
+    if (
+      (typeof raw === "string" && raw.trim()) ||
+      (typeof raw === "number" && Number.isFinite(raw))
+    ) {
+      return null;
+    }
+    return `${word}: expected a label in "quotes" or a number on the scale, got ${showValue(raw)}.`;
   }
   if (!meta.expects) return null;
   const actual = typeof raw;

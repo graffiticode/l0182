@@ -2,18 +2,19 @@
 
 # L0182 RAG Training Examples
 
-50 example prompts for training a RAG model on L0182, the survey
-record — covering taking a survey, answering it, putting the chosen options in priority order,
-contributing one option of your own, and answering within the bounds a survey sets.
+70 example prompts for training a RAG model on L0182, the survey record — covering taking a
+survey of either style, putting the chosen options of a ranked-choice survey in priority order,
+contributing a write-in, answering within the bounds a survey sets, and rating the items of a
+rating survey on their scales, with opt-outs and comments.
 
 **Every example starts by OPENING a survey, and most then take it in a second turn.** Those are
 two distinct requests against the same item, and they are written here as `Turn 1` and `Turn 2`:
 
 - **Turn 1 creates the item.** The program names the survey and the session — nothing else —
-  and compiles to the survey the taker was given: its options, its title, its instructions and its
-  bounds, along with which version was drawn. There is no response yet.
+  and compiles to the survey the taker was given: its options or its items and their scales, its
+  title, its instructions and its bounds, along with which version was drawn. There is no response yet.
 - **Turn 2 edits that same item**, adding `response [...]` to the program Turn 1 produced. The
-  survey is not written again and the options are not restated: the program keeps its `id` and its
+  survey is not written again and the options or items are not restated: the program keeps its `id` and its
   `session-id`, which is what brings back the version this taker was actually shown.
 
 **Turn 2 is short because Turn 1 already answered the questions it would otherwise have to ask.**
@@ -28,7 +29,8 @@ A prompt with only a Turn 1 is complete as it stands — a survey awaiting an an
 thing to ask for. A prompt with both is two turns, never one, and Turn 2 assumes the item Turn 1
 made.
 
-**A survey cannot be created here.** Its options, wording and bounds belong to the survey itself,
+**A survey cannot be created here.** Its options, items, scales, wording and bounds belong to the
+survey itself,
 and no word writes them — so "take the team-retro survey" means take the one that exists, and
 there is no prompt anywhere below that invents a set of options.
 
@@ -41,18 +43,23 @@ dominates, and the contributed option is almost always left to the responder to 
 Each turn is written in the requester's own voice. Prompts describe WHAT to record, never how to
 write it: someone asks for an answer, not for a `response [...]`.
 
-| `id`               | The survey                                               | Choices |
-| :----------------- | :------------------------------------------------------- | :------ |
-| `civic-priorities` | civic priorities — twelve versions, one drawn per taking | 1–5     |
-| `team-retro`       | eight engineering-team retro options                     | 1–3     |
-| `city-budget`      | ten neighbourhood projects a council could fund          | 0–2     |
-| `product-features` | nine features customers have asked for                   | 2–4     |
-| `school`           | seven school improvements                                | 0–3     |
+| `id`                    | Style         | The survey                                                    |
+| :---------------------- | :------------ | :------------------------------------------------------------ |
+| `civic-priorities`      | ranked-choice | civic priorities — twelve versions, one drawn per taking. 1–5 |
+| `team-retro`            | ranked-choice | eight engineering-team retro options. 1–3                     |
+| `city-budget`           | ranked-choice | ten neighbourhood projects a council could fund. 0–2          |
+| `product-features`      | ranked-choice | nine features customers have asked for. 2–4                   |
+| `school`                | ranked-choice | seven school improvements. 0–3                                |
+| `course-feedback`       | rating        | agreement grid with an opt-out, an ease line, NPS; a comment  |
+| `customer-satisfaction` | rating        | satisfaction questions, a star rating, NPS                    |
+| `app-usability`         | rating        | six 1–7 semantic-differential lines                           |
+| `workplace-pulse`       | rating        | three versions — frequency, importance, effect                |
 
 The bounds are the survey's own and no prompt sets them. Every option named below is one its survey
 actually contains, and a selection naming an option the set does not hold is a compile error.
-Prompts that name options outright use a survey with a single version, because `civic-priorities`
-draws one of twelve and only the taker can see which.
+Prompts that name options or ratings outright use a survey with a single version, because
+`civic-priorities` draws one of twelve and `workplace-pulse` one of three, and only the taker can
+see which.
 
 ## Category 1: Taking a Survey (1–6)
 
@@ -168,3 +175,51 @@ draws one of twelve and only the taker can see which.
     **Turn 2** — Take it as the person who carries the pager, and contribute an option from that experience.
 50. **Turn 1** — Take `product-features`.
     **Turn 2** — Take it as a customer who has been asking for the same thing for two years.
+
+## Category 8: Taking a Rating Survey (51–54)
+
+51. **Turn 1** — Take the `course-feedback` survey.
+52. **Turn 1** — Open `customer-satisfaction` so I can see what it asks before I answer.
+53. **Turn 1** — Give me the `workplace-pulse` survey.
+54. **Turn 1** — Take `app-usability`, and tell me what the two ends of each line mean.
+
+## Category 9: Rating With Your Own Judgement (55–60)
+
+55. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it as a student who enjoyed the course but found the labs rushed.
+56. **Turn 1** — Take `customer-satisfaction`.
+    **Turn 2** — Take it as a shopper who found everything quickly but queued for twenty minutes to pay.
+57. **Turn 1** — Take `app-usability`.
+    **Turn 2** — Take it as someone opening the app for the first time.
+58. **Turn 1** — Take `workplace-pulse`.
+    **Turn 2** — Answer it honestly for someone on a team that has just shipped a large release.
+59. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it for me: agree with everything except the pace, which I disagree with, and the portal was easy enough — a 5.
+60. **Turn 1** — Take `customer-satisfaction`.
+    **Turn 2** — Take it for me: satisfied with everything, four stars for the visit, and an 8 for recommending you.
+
+## Category 10: Numeric Scales, NPS and Stars (61–64)
+
+61. **Turn 1** — Take `customer-satisfaction`.
+    **Turn 2** — Take it, and give the visit overall three stars.
+62. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it, and say I would recommend it ten out of ten.
+63. **Turn 1** — Take `app-usability`.
+    **Turn 2** — Put the app right at the clear end for finding my way around, and halfway for everything else.
+64. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it, but leave out the recommendation question — I would rather not answer it.
+
+## Category 11: Opting Out and Commenting (65–70)
+
+65. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it, and mark the labs not applicable — I never went to one.
+66. **Turn 1** — Take `workplace-pulse`.
+    **Turn 2** — Take it, and prefer not to say wherever the survey lets me.
+67. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it, and add a comment asking for more worked examples.
+68. **Turn 1** — Take `workplace-pulse`.
+    **Turn 2** — Take it, and if it asks for a comment, say what would make the biggest difference.
+69. **Turn 1** — Take `course-feedback`.
+    **Turn 2** — Take it as a student who missed half the lectures, and say so in the comment.
+70. **Turn 1** — Take `customer-satisfaction`.
+    **Turn 2** — Take it as a first-time visitor who could not find anything they came for.

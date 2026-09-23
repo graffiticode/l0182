@@ -24,7 +24,9 @@ let data: any;
 
 /** Install this survey's data: a bare list of options, or the whole envelope. */
 const given = (d: any) => {
-  data = Array.isArray(d) ? { options: d } : d;
+  data = Array.isArray(d)
+    ? { style: "ranked-choice", options: d }
+    : { style: "ranked-choice", ...d };
 };
 
 beforeEach(() => {
@@ -209,7 +211,7 @@ describe("the response", () => {
 
   it("refuses a response that chooses nothing under the default floor", async () => {
     expect(await errorOf(survey(`response [ write-in "ranked-choice voting" ]`))).toContain(
-      "`min-choices` is 1",
+      "`minChoices` is 1",
     );
   });
 
@@ -231,22 +233,22 @@ describe("the response", () => {
   it("refuses a selection under the survey's floor", async () => {
     given({ options: THREE, minChoices: 2 });
     const msg = await errorOf(survey(`response [ choices ["o0"] ]`));
-    expect(msg).toContain("`min-choices` is 2");
-    expect(msg).toContain("Select more options");
+    expect(msg).toContain("`minChoices` is 2");
+    expect(msg).toContain("Choose more options");
   });
 
   it("refuses a selection over the survey's ceiling", async () => {
     given({ options: THREE, maxChoices: 1 });
     const msg = await errorOf(survey(`response [ choices ["o0" "o1"] ]`));
-    expect(msg).toContain("`max-choices` is 1");
-    expect(msg).toContain("Select fewer options");
+    expect(msg).toContain("`maxChoices` is 1");
+    expect(msg).toContain("Choose fewer options");
   });
 
   it("refuses a new option that is already in the set, and points at the existing one", async () => {
     given({ options: THREE, minChoices: 0 });
     const msg = await errorOf(survey(`response [ write-in "affordable housing" ]`));
     expect(msg).toContain('repeats "affordable housing"');
-    expect(msg).toContain("select the existing one instead");
+    expect(msg).toContain("choose the existing one instead");
   });
 
   it("catches a repeat that differs only in case", async () => {

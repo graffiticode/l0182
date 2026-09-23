@@ -5,13 +5,29 @@
 // `Survey` is also exported as `Form`, which is the prop name the shared View takes. There is
 // no form here: the record is written as code, and this only displays it.
 export { Survey, Survey as Form } from "./components/survey";
-export { boundsLabel, resolveChoices } from "./lib/survey";
+export {
+  answerText,
+  boundsLabel,
+  isRating,
+  resolveChoices,
+  resolveRatings,
+  scaleEnds,
+} from "./lib/survey";
 export type {
   Compiled,
   Option,
+  Point,
+  RankedResponse,
+  RankedSurvey,
+  RatedItem,
+  RatedRow,
+  Rating,
+  RatingResponse,
+  RatingSurvey,
   Resolved,
+  ResolvedRatings,
+  Scale,
   Survey as SurveyModel,
-  SurveyResponse,
 } from "./lib/survey";
 export { View } from "@graffiticode/l0000-view";
 export type { FormProps, FormComponent, CompileError } from "@graffiticode/l0000-view";

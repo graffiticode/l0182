@@ -17,7 +17,7 @@ const SRC = `survey [ id "fixture" ]..`;
 
 setSource(async (id) => ({
   instance: `${id}-1`,
-  data: { title: "T", options: ["one", "two"] },
+  data: { style: "ranked-choice", title: "T", options: ["one", "two"] },
 }));
 
 /** Compile with an explicit `data`, the way a round trip does. */

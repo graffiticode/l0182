@@ -15,6 +15,7 @@ import { join } from "path";
 import Ajv from "ajv/dist/2020.js";
 import { parser } from "@graffiticode/parser";
 import { lexicon as base } from "@graffiticode/l0000";
+import { itemTypes } from "./attributes.js";
 import { compiler, lexicon, loadSurvey, validAttributes } from "./index.js";
 
 // Documented programs run against the REAL surveys in data/, with no stub anywhere. A program
@@ -26,7 +27,7 @@ import { compiler, lexicon, loadSurvey, validAttributes } from "./index.js";
 // draws one at random, so a selection written here would match only sometimes.
 
 /** Files whose fenced blocks are programs. examples.md holds prompts and is checked separately. */
-const SPEC_FILES = ["spec/spec.md", "spec/instructions.md"];
+const SPEC_FILES = ["spec/spec.md", "spec/instructions.md", "spec/usage-guide.md"];
 
 function blocks(path: string): string[] {
   const out: string[] = [];
@@ -202,6 +203,34 @@ describe("schema.json describes what the compiler actually emits", () => {
     check(out, "no response");
   });
 
+  test("a rating survey with a full response validates", async () => {
+    const out: any = await compileSrc(
+      `survey [ id "course-feedback" session-id get-val-public "itemId"
+         response [
+           ratings [
+             [item "The course met its stated goals" rating "Agree"]
+             [item "The pace of the course was right for me" rating "Not applicable"]
+             [item "The course materials were clear" rating 5]
+             [item "Feedback on my work was timely and useful" rating "Disagree"]
+             [item "The lab sessions helped me apply what I learned" rating "Strongly agree"]
+             [item "Using the course portal was" rating "very easy"]
+             [item "How likely are you to recommend this course to a colleague?" rating 9]
+           ]
+           comment "More worked examples, please."
+         ] ]..`,
+    );
+    expect(out.response.ratings[1]).toEqual({ item: "pace", optOut: true });
+    expect(out.response.ratings[5]).toEqual({ item: "portal", value: 7 });
+    check(out, "a full rating response");
+  });
+
+  test("every installed survey validates awaiting a response", async () => {
+    for (const f of readdirSync("data")) {
+      const instance = f.replace(/\.json$/, "");
+      check(await compileSrc(`survey [ id "${instance}" ]..`), instance);
+    }
+  });
+
   test("rejects output the compiler could not have produced", async () => {
     const out: any = await compileSrc(`survey [ id "team-retro-1" ]..`);
     out.survey.nonsense = true;
@@ -238,18 +267,21 @@ describe("the surveys installed in data/", () => {
   // compiled here as a program, the same way a taker reaches it. A file that stops being a
   // valid set fails the build rather than somebody's first prompt.
   //
-  // They vary on purpose: records with ids and bare strings, an id column and a text-only CSV,
-  // and a quoted field carrying a comma. That spread is the point; a corpus of one shape teaches
-  // the generator one shape.
+  // They vary on purpose: both styles; options and items as records with ids and as bare strings;
+  // every form a scale can take. That spread is the point; a corpus of one shape teaches the
+  // generator one shape.
   const files = readdirSync("data").sort();
   const instances = files.map((f) => f.replace(/\.json$/, ""));
 
   /** The whole file. Every survey is one JSON envelope — see "every survey says what it is". */
   const envelope = (f: string): any => JSON.parse(readFileSync(join("data", f), "utf-8"));
+  /** What a response answers: a ranked-choice survey's options, or a rating survey's items. */
   const read = (f: string): any[] => {
     const parsed = envelope(f);
-    return Array.isArray(parsed) ? parsed : parsed.options;
+    return parsed.style === "rating" ? parsed.items : parsed.options;
   };
+  const ranked = files.filter((f) => envelope(f).style === "ranked-choice");
+  const rating = files.filter((f) => envelope(f).style === "rating");
 
   test("every file is a version of some survey", () => {
     // `<id>-<n>` is the whole naming rule, and a file outside it is invisible to `id "…"` —
@@ -272,7 +304,7 @@ describe("the surveys installed in data/", () => {
   });
 
   test("the shapes vary, because a corpus of one shape teaches one shape", () => {
-    const sets = files.map(read);
+    const sets = ranked.map(read);
     expect(
       sets.some((set) => typeof set[0] === "string"),
       "no bare-string set",
@@ -283,10 +315,69 @@ describe("the surveys installed in data/", () => {
     ).toBe(true);
   });
 
+  test("every survey declares its style, and both styles are installed", () => {
+    for (const f of files) expect(["ranked-choice", "rating"], f).toContain(envelope(f).style);
+    expect(ranked.length, "no ranked-choice survey").toBeGreaterThan(2);
+    expect(rating.length, "no rating survey").toBeGreaterThan(2);
+  });
+
+  test("the rating surveys cover every form a scale can take", () => {
+    // The generator learns the shapes it is shown. A corpus with no numeric range, no anchors or
+    // no opt-out teaches a language without them.
+    const scales = rating.flatMap((f) => {
+      const env = envelope(f);
+      const named = Object.values(env.scales || {});
+      const inline = env.items.map((x: any) => (typeof x === "object" ? x.scale : undefined));
+      return [...named, env.scale, ...inline].filter((x) => x !== undefined);
+    });
+    const has = (pred: (s: any) => boolean) => scales.some(pred);
+    expect(
+      has((s) => s === "agreement-5" || s?.preset === "agreement-5"),
+      "no agreement scale",
+    ).toBe(true);
+    expect(
+      has((s) => s === "nps"),
+      "no NPS item",
+    ).toBe(true);
+    expect(
+      has((s) => s === "stars-5"),
+      "no star rating",
+    ).toBe(true);
+    expect(
+      has((s) => s?.min !== undefined),
+      "no numeric range",
+    ).toBe(true);
+    expect(
+      has((s) => Array.isArray(s?.points)),
+      "no hand-labelled points",
+    ).toBe(true);
+    expect(
+      has((s) => s?.optOut !== undefined),
+      "no opt-out",
+    ).toBe(true);
+    const items = rating.flatMap((f) => envelope(f).items);
+    expect(
+      items.some((x: any) => x.anchors),
+      "no semantic differential",
+    ).toBe(true);
+    expect(
+      items.some((x: any) => typeof x === "string"),
+      "no bare-string items",
+    ).toBe(true);
+    expect(
+      items.some((x: any) => x.required === false),
+      "no optional item",
+    ).toBe(true);
+    expect(
+      rating.some((f) => envelope(f).comment),
+      "no survey asking for a comment",
+    ).toBe(true);
+  });
+
   test("a survey that means to bound a response says so in its own data", () => {
     // Bounds are the survey's, not the program's — there is no word for them — so a survey that
     // wants anything but the defaults has to carry them here.
-    const bounded = files.filter((f) => {
+    const bounded = ranked.filter((f) => {
       const env = envelope(f);
       return env.minChoices !== undefined || env.maxChoices !== undefined;
     });
@@ -297,11 +388,11 @@ describe("the surveys installed in data/", () => {
     test(`${instance} is a survey L0182 accepts`, async () => {
       const file = files.find((f) => f.startsWith(`${instance}.`))!;
       const set = read(file);
-      expect(set.length, `${file} has too few options`).toBeGreaterThan(1);
+      expect(set.length, `${file} holds nothing to answer`).toBeGreaterThan(1);
       // Named outright, so this reads the file under test rather than drawing a sibling.
       const out: any = await compileSrc(`survey [ id "${instance}" ]..`);
       expect(out.survey.instance).toBe(instance);
-      expect(out.survey.options).toHaveLength(set.length);
+      expect(out.survey.options ?? out.survey.items).toHaveLength(set.length);
     });
   }
 
@@ -391,10 +482,10 @@ describe("scope.json and language-info.json know which items exist", () => {
   });
 
   test("language-info.json's supported_item_types is the container set", () => {
-    expect([...info.supported_item_types].sort()).toEqual(Object.keys(validAttributes).sort());
+    expect([...info.supported_item_types].sort()).toEqual([...itemTypes].sort());
   });
 
-  test("every container is in the lexicon at arity 1", () => {
+  test("every container, and the member list, is in the lexicon at arity 1", () => {
     for (const container of Object.keys(validAttributes)) {
       expect(lexicon[container], `\`${container}\` is not in the lexicon`).toBeDefined();
       expect(lexicon[container].arity).toBe(1);

@@ -5,9 +5,16 @@ repository.
 
 ## What this is
 
-L0182 is a Graffiticode dialect for **taking surveys**. A program names
-the survey being taken and — once something has answered — carries the response to it: the options
-chosen in priority order, plus one new option that was not in the set.
+L0182 is a Graffiticode dialect for **taking surveys**. A program names the survey being taken
+and — once something has answered — carries the response to it. A survey has one of two
+**styles**, declared by its data:
+
+- **ranked-choice** — a set of options; the response is `choices` in priority order plus at most
+  one `write-in` that was not in the set.
+- **rating** — a list of items, each on a scale (Likert agreement/frequency/importance/
+  satisfaction/likelihood presets, NPS, stars, labelled or numeric custom scales, semantic
+  differentials, opt-outs); the response is `ratings [[item … rating …] …]` plus an optional
+  `comment` where the survey asks for one.
 
 Three commitments the rest of the design follows from:
 
@@ -16,9 +23,9 @@ Three commitments the rest of the design follows from:
   a survey-taking flow here is the wrong direction; that belongs to a different language or a
   different client reading this record.
 - **The survey is not in the language either.** A program says `id "civic-priorities"` and nothing
-  else about it: the options, the title, the instructions and the bounds are read from the back end
-  by the compiler (`src/source.ts`). There is no word for a set of options, and adding one would
-  hand the survey to whoever takes it. The client does not see the survey until the first turn
+  else about it: the options or items, the scales, the title, the instructions and the bounds are
+  read from the back end by the compiler (`src/source.ts`). There is no word for any of them, and
+  adding one would hand the survey to whoever takes it. The client does not see the survey until the first turn
   instantiates it.
 - **The code is the interface.** A person writes the response in the console's editor; an agent
   writes it through `update_item`. They are the same client, so both produce the identical
@@ -116,7 +123,10 @@ Three workspaces on the published `@graffiticode/l0000` and `@graffiticode/l0000
 
 - **`packages/core`** (`@graffiticode/l0182`) — the language. `attributes.ts` is the vocabulary
   as data; `lexicon.ts` and `compiler.ts` both generate from it; `source.ts` finds the survey;
-  `survey.ts` is the assembly and every rule; `spec/` is what agents read and `data/` is what the
+  `survey.ts` reads the program, builds the response and dispatches on the data's `style` to
+  `ranked.ts` or `rating.ts`, which hold each style's assembly and every rule; `scales.ts` holds
+  the scale presets and normalises every scale form to one list of points; `resolve.ts` is the
+  text/id/position lookup both styles share. `spec/` is what agents read and `data/` is what the
   compiler reads.
 - **`packages/api`** (`@graffiticode/api-l0182`, private) — Express: `POST /compile`, `GET /form`,
   a health check at `/`, and the assembled static assets. Its middleware order and cache headers
@@ -133,6 +143,11 @@ Transformer method are all generated from it — arity included, so a word can n
 with one arity and handled with another. **Never hand-write an attribute handler.**
 
 Every word is arity 1. Only the two containers (`survey`, `response`) and `PROG` are written out.
+`ratings` is a generated row (`expects: "records"`) whose value is a **member list** — one
+attribute list per answer, the style guide's array-of-objects form. It appears in
+`validAttributes` so its words (`item`, `rating`) get the "belongs inside" hint, but it is not an
+item type: `itemTypes` is the list `language-info.json` must match. `readRatings` in `rating.ts`
+merges and checks each entry.
 
 The language used to carry a second table of arity-2 chaining words that configured an activity
 from outside its brackets, and that shape had a trap the compiler could never see: a config word
@@ -163,25 +178,32 @@ for exactly this reason. The generated Checker methods here walk the tree and do
 ### The compiler is the only enforcement there is
 
 This is the load-bearing consequence of deleting the player. Nothing at delivery time can hold a
-response inside the authored bounds, so `survey.ts` checks more than a form-backed language
-would need to: every `choices` id exists in the set, none repeats, the count is within
-`min-choices`/`max-choices`, and `write-in` does not repeat something already in the set. Removing
-one of those does not degrade a warning — it makes a meaningless record compile.
+response inside the survey's rules, so the compiler checks more than a form-backed language
+would need to. Ranked choice (`ranked.ts`): every `choices` entry names an option in the set, none
+repeats, the count is within `minChoices`/`maxChoices`, and `write-in` does not repeat an option.
+Rating (`rating.ts`): every `item` names an item, none is rated twice, every answer is on its
+item's scale, every required item is answered, and `comment` only where the survey asks for one.
+Both: a response in the other style's words is refused by name. Removing any of those does not
+degrade a warning — it makes a meaningless record compile.
 
 ### Error messages are a product surface
 
 The generator is an LLM that reads a compile error and tries again, so the wording is not a
 diagnostic. Every message names the fix:
 
-> survey: `max-choices` (9) is more than the 3 options in the set, so there are never enough options
-> to pick that many. Add options or lower `max-choices`.
+> response: `choices` has 4 options, but this survey's `maxChoices` is 3. Choose fewer options —
+> keep the most important ones.
+
+A message may only name a fix the reader can make. `min-choices`/`max-choices` stopped being words
+when the survey left the language, and the messages that still told a program to "lower
+`min-choices`" were pointing at a fix that did not exist.
 
 The tests assert on that text, not merely that compilation failed. A message that stops naming
 the fix is a regression even when the program still errors.
 
-### `choices` names an option by text, by id, or by position
+### `choices` and `item` name an entry by text, by id, or by position
 
-`choices` takes any of the three, and `resolveResponse` normalises all of them to ids before
+Both take any of the three, and `resolveRef` in `resolve.ts` normalises all of them to ids before
 they reach the output — so the compiled record is identical whichever was written and the input
 form costs nothing downstream.
 
@@ -201,8 +223,15 @@ Three smaller rules hold it together:
   lines. Two options that normalise to the same key make that key ambiguous, and it is refused by
   name rather than resolved to the first.
 - **0-based positions**, matching the ids the language derives for a set that has none — a
-  position _is_ the number in the derived id. The range message says where counting starts,
-  because an off-by-one records a different ranking rather than failing.
+  position _is_ the number in the derived id (`o0…` for options, `q0…` for items). The range
+  message says where counting starts, because an off-by-one records a different ranking rather
+  than failing.
+
+**A number in `rating` is the opposite: the scale's own value, never a position.** NPS `9` is 9;
+`4` on a five-point agreement scale is "Agree" because its values run 1–5. On a scale the number
+IS the answer, and a 0-based reading would shift every Likert answer by one without failing. A
+string `rating` matches a point's label, the item's own `anchors` for its ends, the scale's
+`optOut`, or a number in quotes — folded the same way as option text.
 
 ### A survey is looked up, drawn, and held by session
 
@@ -248,10 +277,10 @@ does not have:
 also the shape any other back end plugs into: a survey does not have to come from a file, and
 nothing in the language changes if it stops doing so.
 
-### Options keep the service's ids when they have them
+### Options and items keep the service's ids when they have them
 
-A survey's data holds a bare string or a `{id, text}` record per option. An entry that names its
-own id keeps it; one that does not is numbered positionally, `o0` upward. Both forms exist for
+A survey's data holds a bare string or a `{id, text}` record per option or item. An entry that
+names its own id keeps it; one that does not is numbered positionally, `o0`/`q0` upward. Both forms exist for
 one reason: a survey comes from somewhere, and when that somewhere carried ids they have to
 survive into `choices`, because a selection of positional ids means nothing back at the service
 the set came from.
@@ -352,17 +381,20 @@ hostname. Same name, the deploy is at fault; different names, it is the CDN.
 
 ## The view is a renderer, not a player
 
-`components/survey/Survey.tsx` is the whole of it, and it is **read-only by design rather than
-by stage**. Adding a control would create a third way to answer that neither of the two real
+`components/survey/Survey.tsx` is the frame and the ranked-choice body; `Rating.tsx` is the
+rating body. It is **read-only by design rather than by stage**. Adding a control would create a third way to answer that neither of the two real
 clients — the console editor and `update_item` — shares.
 
-It shows the initial state and the current one **side by side**: left is the set as code
-generation inlined it, right is what came back. Options carried into `choices` are dimmed on the
+A ranked-choice survey shows the initial state and the current one **side by side**: left is the
+set as code generation inlined it, right is what came back. Options carried into `choices` are dimmed on the
 left rather than removed, so the column keeps its shape and what was passed over stays visible.
 The columns stack on a narrow viewport, because this is published as an embed and renders inside
 other people's pages. A survey with no `response` shows the right column explicitly empty and
 captioned — that is the state code generation leaves an item in, and it must read as awaiting a
-response rather than as broken.
+response rather than as broken. A rating survey is one row per item instead: a scale already
+shows before and after at once, every point it offers with the answer filled in. Points are
+`<span>`s wrapped with `flex-wrap`, not a table, so a seven-label agreement scale still fits a
+phone-width embed.
 
 `Survey` is exported as `Form` too, because that is the prop name the shared View takes. **No
 `reduce` is passed** — L0182 has no actions of its own, so the `LanguageReducer` hook is unused
@@ -371,12 +403,13 @@ here and L0179 is again its only user.
 **There is no DOM in the view suite, deliberately.** `vitest.config.ts` pulls in no jsdom, which
 is what keeps a published component's dev tree free of a rendering library. So the logic that
 can be wrong without looking wrong lives in `lib/survey.ts` as pure functions —
-`resolveChoices` and `boundsLabel` — and `lib/survey.test.ts` is what tests it. Do not reach
+`resolveChoices`, `boundsLabel`, `resolveRatings`, `scaleEnds`, `answerText` — and
+`lib/survey.test.ts` is what tests it. Do not reach
 for a render test; put the logic in `lib/` and keep the component a projection of it.
 `embed/dev.html` is the way to _look_ at it: it renders every state against fixed models with no
 API behind them, and Vite builds only `index.html`, so it never reaches the embed bundle.
 
-**`resolveChoices` names an unresolvable id rather than dropping it.** The compiler refuses
+**`resolveChoices` and `resolveRatings` name what they cannot place rather than dropping it.** The compiler refuses
 those, so they only arrive on a record assembled outside it — but silently dropping one would
 render a shorter ranking than the one actually recorded, which is the kind of wrong that looks
 right.
@@ -399,12 +432,15 @@ wants borders must sit inside it.
 generator writes from `instructions.md` and retrieves from `examples.md`, so it is reproduced
 verbatim into generated programs.
 
-- Every fenced program in `spec.md` and `instructions.md`, plus `template.gc`, **compiles** —
+- Every fenced program in `spec.md`, `instructions.md` and `usage-guide.md`, plus `template.gc`,
+  **compiles** —
   not merely parses. Programs are recognized by the `..` terminator rather than a list of
   opening words, because a list goes stale the moment the vocabulary changes.
 - Every documented word exists in the lexicon with the signature claimed, and every L0182 word
   (derived as `lexicon` minus L0000's) is documented. The Functions table is **generated** from
-  the lexicon — regenerate it rather than hand-editing.
+  the lexicon — regenerate it rather than hand-editing. There is no script for it: print one
+  `| \`word\` | \`type\` | arity | description |`row per L0182 entry of`src/lexicon.ts`, then run
+  Prettier over the file.
 - `schema.json` is validated against **real compiled output**, including a case asserting that
   `additionalProperties: false` actually bites. Draft 2020-12, so the test imports
   `ajv/dist/2020.js`; the hoisted ajv 6 cannot read it.
@@ -430,13 +466,17 @@ are NOT served by this language server — `build-static.js` never reads `data/`
 asserts a 404. Serving them would let whoever takes a survey read it, or a client render it,
 before taking it, which is the thing the split exists to prevent.
 
-Every file is `<survey-id>-<n>.json`, and `docs.test.ts` compiles each one as a program, so a
-file that stops being a valid survey fails the build rather than somebody's first prompt. It also
-asserts every id the docs name is installed, and that the surveys meaning to bound a response
-carry `minChoices`/`maxChoices` themselves — there is no word for them. The sets differ in shape
-on purpose (records carrying a service's ids, bare strings): a corpus of one shape teaches the
-generator one shape. The
-documented ANSWER examples all name a single-version survey — one with several draws a version at
+Every file is `<survey-id>-<n>.json` and declares its `"style"` — required, not inferred, because
+a rating file that lost it would otherwise fail as a ranked-choice survey with no options, which
+names the wrong fault. (A bare JSON list is the one shorthand, and means ranked-choice options.)
+`docs.test.ts` compiles each file as a program and validates it against the schema, so a file
+that stops being a valid survey fails the build rather than somebody's first prompt. It also
+asserts every id the docs name is installed, that both styles are installed, that the ranked
+surveys meaning to bound a response carry `minChoices`/`maxChoices` themselves, and that the
+rating corpus covers every scale form — a preset, NPS, stars, a numeric range, hand-labelled
+points, an opt-out, anchors, bare-string items, an optional item and a comment. The shapes differ
+on purpose: a corpus of one shape teaches the generator one shape. The documented ANSWER
+examples all name a single-version survey — one with several draws a version at
 random, so a documented selection would match only sometimes.
 
 **Two of the served assets are not the file you edited.** `build-static.js` concatenates
@@ -450,8 +490,9 @@ in mind.
 1. Add its row to `attributeFields`. Arity 1; there is no other option. Every L0182 word is a row
    there now — only the two containers are hand-written.
 2. Add it to the container's list in `validAttributes`.
-3. Handle it in `buildSurvey` or `buildResponse` in `survey.ts`, with its default and its error
-   messages — each naming the fix.
+3. Handle it in `buildResponse` in `survey.ts` and in the style it belongs to (`ranked.ts` or
+   `rating.ts`), with its default and its error messages — each naming the fix. A word only one
+   style takes must also be refused on the other by `assertStyleWords`.
 4. If the renderer needs it, add it to the model types in `packages/view/src/lib/survey.ts` and
    project it there, not in the component.
 5. Extend `spec/schema.json`.
@@ -478,8 +519,8 @@ obvious next feature request re-proposes one of them:
 - **`participants` and `audience`**, the human-vs-agent gate and the per-population ranking.
   Both clients are the same client now, so there is no population to separate.
 - **`scripts/post-response.mjs`**, which posted a response as task data. Responses are code.
-- **The words that authored a survey** — `ideas` (now `options`, a key in the data, never a word), `title`, `instructions`, `min-choices`,
-  `max-choices`, and `name` — plus **`fetch`** (`src/fetch.ts`, its scheme and host checks and
+- **The words that authored a survey** — `ideas` (now `options`, a key in the data, never a
+  word), `title`, `instructions`, `min-choices`, `max-choices`, and `name` — plus **`fetch`** (`src/fetch.ts`, its scheme and host checks and
   its timeout), CSV reading, and the whole "point the program at a dataset" model. A survey is
   one JSON file that says everything it is; CSV could carry a list and nothing else, so a survey
   stored that way had no title, no instructions and no bounds of its own.
@@ -503,13 +544,14 @@ not be back-ported at arity 2 because L0180 already had `title` at arity 1 insid
 
 ## Not built yet
 
-Aggregating across responses — a group ranking, a tally, or any live result. Authoring a survey:
-the options, the wording and the bounds belong to `data/` and no word writes them. Reading a survey
+Aggregating across responses — a group ranking, an average rating, an NPS score, a tally, or any
+live result. Authoring a survey: the options, items, scales, wording and bounds belong to `data/`
+and no word writes them. Reading a survey
 from anywhere but the filesystem, or authenticating to one — `setSource` is where that would go.
 A durable session→version memory (see the limits above). Sampling within a survey: a version is
-served whole and in order. An interactive survey-taking flow. Conventional questionnaire items —
-Likert, demographics, satisfaction ratings, branching logic. Ranking objects other than a line of
-text. Any analysis of the responses collected. Enforced one-response-per-person.
+served whole and in order. An interactive survey-taking flow. Mixing the two styles in one survey — a file is one style.
+Other questionnaire items — demographics, fixed free-text questions, branching logic. Reverse-coded
+items or any scoring of a scale. Ranking or rating objects other than a line of text. Any analysis of the responses collected. Enforced one-response-per-person.
 
 ## Related repos
 

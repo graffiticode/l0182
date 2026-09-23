@@ -40,13 +40,13 @@ const containers = {
     "SURVEY",
     1,
     "<list: record>",
-    "The survey being taken, and optionally the response to it. The options themselves come from the survey, not from the program.",
+    "The survey being taken, and optionally the response to it. What the survey asks — options or items, wording, bounds, scales — comes from the survey, not from the program.",
   ),
   response: fn(
     "RESPONSE",
     1,
     "<list: record>",
-    "The options chosen, in priority order, and optionally one new option that was not in the set.",
+    "The answer. To a ranked-choice survey: `choices` in priority order and optionally one `write-in`. To a rating survey: `ratings`, one per item, and a `comment` where the survey asks for one.",
   ),
 };
 
